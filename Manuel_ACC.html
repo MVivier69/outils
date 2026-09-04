@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12C4EE">
+<link rel="icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<link rel="apple-touch-icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<title>Manuel — Simulateur d'autoconsommation collective</title>
+<style>
+/* ════════════════════════════════════════════════════════════════
+   CHARTE GRAPHIQUE PARTAGÉE  (identique au simulateur Batteries)
+   Modifiez librement ces variables pour changer l'apparence.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  /* Palette reprise de l'application Soleil Beaujolais (soleil-b) */
+  --principale:#12C4EE;     /* cyan — couleur principale        */
+  --accent:#12C4EE;         /* alias : accent primaire = cyan   */
+  --accent-2:#FAC800;       /* jaune — accent secondaire        */
+  --encre:#3F5570;          /* bleu-ardoise — encre de l'app    */
+  --ink:#3F5570;            /* texte principal                  */
+  --ink-soft:#5F7691;       /* texte secondaire                 */
+  --ink-faint:#899BAD;      /* notes / unités                   */
+  --paper:#F2FAFD;          /* fond de l'app                    */
+  --paper-2:#E7F4FA;        /* fond alterné                     */
+  --card:#FFFFFF;           /* fond des cartes                  */
+  --line:rgba(63,85,112,.14);      /* trait de l'app            */
+  --line-strong:rgba(63,85,112,.26);
+  --accent-soft:#E3F7FD;    /* aplat cyan très clair            */
+  --accent-ink:#0B7C9B;     /* texte sur aplat cyan             */
+  --jaune-soft:#FFF6D9;     /* aplat jaune                      */
+  --jaune-ink:#8A6A00;      /* texte sur aplat jaune            */
+  --slate:#7A8CA3;          /* série secondaire (graphes)       */
+  --good:#0E9F6E;           /* valeur favorable                 */
+  --bad:#E02424;            /* valeur défavorable               */
+  --shadow:0 1px 2px rgba(63,85,112,.06), 0 6px 18px rgba(63,85,112,.08);
+  --shadow-fort:0 8px 26px rgba(63,85,112,.16);
+  --radius:14px;
+  --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:var(--paper);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow-wrap:break-word;
+  font-variant-numeric:tabular-nums;
+}
+img{display:block;max-width:100%}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 60px}
+
+/* ── Bandeau / masthead ─────────────────────────────────────────── */
+.masthead{padding:10px 0 18px;border-bottom:1px solid var(--line)}
+.kicker{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 13px;border-radius:999px;
+  background:var(--card);box-shadow:var(--shadow);
+  color:var(--principale);
+  font-size:.82rem;font-weight:700;
+}
+.badge svg{width:15px;height:15px}
+.eyebrow{
+  font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;
+}
+h1{
+  font-family:var(--font-display);
+  font-weight:700;font-size:clamp(1.5rem,4.5vw,2.1rem);
+  line-height:1.15;letter-spacing:-.015em;margin:0;
+}
+h1 em{font-style:normal;color:var(--principale)}
+.lead{margin:8px 0 0;max-width:62ch;color:var(--ink);opacity:.78;font-size:.95rem}
+
+/* ── Note encadrée (motif « à la une » de l'app) ────────────────── */
+.note{
+  display:flex;gap:12px;margin-top:16px;padding:13px 14px;
+  background:var(--card);border-radius:var(--radius);
+  border-left:5px solid var(--accent-2);
+  box-shadow:var(--shadow);font-size:.88rem;color:var(--ink);opacity:.95;
+}
+.note svg{flex:none;width:18px;height:18px;color:var(--principale);margin-top:2px}
+.note strong{font-weight:700}
+
+/* ── Titres de section (motif de l'app : capitales + filet) ─────── */
+.section-title{
+  display:flex;align-items:center;gap:10px;
+  margin:28px 2px 12px;
+  font-family:var(--font-display);
+  font-size:.76rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.9;
+}
+.section-title::after{
+  content:"";flex:1 1 auto;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent-2),transparent);
+}
+.section-title .num{
+  font-size:.72rem;font-weight:700;color:var(--principale);letter-spacing:.08em;
+}
+
+/* ── Cartes de saisie ───────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.card{
+  background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:16px 16px 4px;
+}
+.card h3{
+  margin:0 0 2px;font-size:.7rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink);opacity:.6;
+}
+.field{padding:12px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{display:block;font-size:.92rem;font-weight:600;color:var(--ink)}
+.field .hint{font-size:.78rem;color:var(--ink);opacity:.6;margin:1px 0 8px}
+.inputline{display:flex;align-items:stretch;gap:0}
+.inputline input{
+  flex:1;min-width:0;font-family:var(--font-body);font-size:1rem;font-weight:700;
+  color:var(--ink);background:var(--paper);border:1px solid var(--line);
+  border-radius:10px 0 0 10px;padding:9px 12px;font-variant-numeric:tabular-nums;
+}
+.inputline.solo input{border-radius:10px}
+.inputline input:focus{outline:none;border-color:var(--principale);box-shadow:0 0 0 3px var(--accent-soft)}
+.unit{
+  display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:600;
+  color:var(--ink);opacity:.65;background:var(--paper-2);
+  border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;white-space:nowrap;
+}
+
+/* ── Boutons (pilules de l'app) ─────────────────────────────────── */
+.actions{margin:18px 0 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+button.run{
+  appearance:none;border:0;cursor:pointer;font:inherit;
+  font-size:.9rem;font-weight:700;color:#fff;
+  background:var(--principale);border-radius:999px;padding:11px 22px;
+  box-shadow:var(--shadow);transition:transform .15s ease, filter .15s ease;
+}
+button.run:hover{filter:brightness(1.06);transform:translateY(-2px)}
+button.run:active{transform:translateY(0)}
+.live{font-size:.8rem;color:var(--ink);opacity:.6}
+
+/* ── KPIs ───────────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px}
+.kpi{
+  position:relative;background:var(--card);border-radius:var(--radius);
+  padding:14px 15px 13px;overflow:hidden;box-shadow:var(--shadow);
+  transition:transform .15s ease;
+}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--principale)}
+.kpi .klabel{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--ink);opacity:.6;text-transform:uppercase}
+.kpi .kval{font-family:var(--font-display);font-weight:700;font-size:1.65rem;letter-spacing:-.02em;margin:5px 0 2px;line-height:1.1}
+.kpi .ksub{font-size:.78rem;color:var(--ink);opacity:.7}
+.kpi .kval.pos{color:var(--good)} .kpi .kval.neg{color:var(--bad)}
+
+/* ── Graphique ──────────────────────────────────────────────────── */
+.chart-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chart-head h3{font-family:var(--font-display);font-weight:700;font-size:1rem;margin:0}
+.chart-head p{margin:0;font-size:.78rem;color:var(--ink);opacity:.6}
+.chart-box{position:relative;height:340px}
+
+/* ── Tableau ────────────────────────────────────────────────────── */
+.table-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:560px}
+th,td{padding:10px 14px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;background:var(--paper-2);border-bottom:1px solid var(--line);
+}
+tbody td{border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even){background:var(--paper)}
+tbody tr.cross{background:var(--accent-soft)}
+tbody tr.cross td{font-weight:700;color:var(--accent-ink)}
+
+/* ── Méthodologie (accordéon) ───────────────────────────────────── */
+details.method{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+details.method>summary{
+  list-style:none;cursor:pointer;padding:14px 16px;font-family:var(--font-display);
+  font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:space-between;
+}
+details.method>summary::-webkit-details-marker{display:none}
+details.method>summary .chev{transition:transform .2s ease;color:var(--principale)}
+details.method[open]>summary .chev{transform:rotate(90deg)}
+.method-body{padding:2px 16px 18px;border-top:1px solid var(--line)}
+.method-body h4{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);opacity:.6;margin:16px 0 6px}
+.formula{
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:.8rem;
+  background:var(--paper);border-radius:10px;
+  padding:8px 12px;margin:6px 0;color:var(--ink);
+}
+.src{font-size:.85rem;color:var(--ink);opacity:.85;margin:6px 0;padding-left:16px;position:relative}
+.src::before{
+  content:"";position:absolute;left:0;top:.55em;
+  width:7px;height:7px;border-radius:50%;background:var(--principale);
+}
+
+/* ── Pied de page ───────────────────────────────────────────────── */
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--ink);opacity:.6;text-align:center}
+
+/* ── Interactions et accessibilité (repris de l'app) ────────────── */
+@media (hover:hover){
+  .kpi:hover,.card:hover{transform:translateY(-2px)}
+  .card{transition:transform .15s ease}
+}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
+  outline:3px solid var(--accent-2);outline-offset:2px;border-radius:6px;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+@media (max-width:359px){.wrap{padding:0 9px 60px}}
+
+/* ── Bannière et identité (motif de l'application soleil-b) ─────── */
+.banniere{
+  display:block;margin:0 -16px;overflow:hidden;background:var(--principale);
+}
+.banniere img{width:100%;height:var(--hauteur-banniere,130px);object-fit:cover}
+.identite{display:flex;align-items:center;gap:12px;padding:14px 2px 2px}
+.identite img{width:46px;height:46px;border-radius:50%;flex:0 0 auto}
+.identite .textes{min-width:0}
+.identite .nom{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.identite .bl{margin:2px 0 0;font-size:.82rem;opacity:.72}
+@media (max-width:359px){.banniere{margin:0 -9px}}
+
+/* ════════════════════════════════════════════════════════════════
+   AJOUTS SPÉCIFIQUES AU MANUEL
+   ════════════════════════════════════════════════════════════════ */
+.toc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px;box-shadow:var(--shadow)}
+.toc h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px}
+.toc li{margin:4px 0;font-size:14px;break-inside:avoid}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+.toc a:hover{color:var(--accent);border-color:var(--accent)}
+.prose{max-width:70ch}
+.prose p{margin:0 0 12px;color:var(--ink-soft);font-size:15px}
+.prose ol,.prose ul{margin:0 0 12px;padding-left:22px;color:var(--ink-soft);font-size:15px}
+.prose li{margin:5px 0}
+.prose strong{color:var(--ink)}
+.param{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px 22px;margin:14px 0;scroll-margin-top:20px;
+}
+.param:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft), var(--shadow)}
+.param-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.param-head h4{font-family:var(--font-display);font-weight:500;font-size:19px;margin:0;letter-spacing:-.01em}
+.chip{
+  font-size:11.5px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px;
+  background:var(--paper-2);color:var(--ink-faint);border:1px solid var(--line-strong);white-space:nowrap;
+}
+.chip.src{background:#E3F7FD;color:var(--accent-ink);border-color:rgba(18,196,238,.28)}
+.chip.hyp{background:var(--jaune-soft);color:var(--jaune-ink);border-color:rgba(250,200,0,.45)}
+.jump{
+  margin-left:auto;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;
+  border-bottom:1px solid transparent;white-space:nowrap;
+}
+.jump:hover{border-color:var(--accent)}
+.param dl{margin:10px 0 0;display:grid;grid-template-columns:150px 1fr;gap:8px 18px}
+.param dt{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
+.param dd{margin:0;font-size:14.5px;color:var(--ink-soft)}
+.param dd strong{color:var(--ink)}
+@media(max-width:620px){
+  .param dl{grid-template-columns:1fr;gap:2px 0}
+  .param dt{margin-top:10px}
+  .toc ol{columns:1}
+  .jump{margin-left:0;width:100%}
+}
+.backlink{
+  display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:10px 16px;
+  background:var(--ink);color:#fff;border-radius:11px;text-decoration:none;font-size:14px;font-weight:600;
+}
+.backlink:hover{background:#000}
+.callout{
+  background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:12px;padding:14px 18px;margin:14px 0;font-size:14px;color:var(--ink-soft);box-shadow:var(--shadow);
+}
+.callout strong{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Bannière et identité — images du dépôt soleil-b.
+       Pour utiliser d'autres visuels, remplacez simplement les deux URL ci-dessous. -->
+  <a class="banniere" href="https://mvivier69.github.io/soleil-b/" target="_blank" rel="noopener">
+    <img src="https://mvivier69.github.io/soleil-b/images/banniere.jpg" alt="">
+  </a>
+  <div class="identite">
+    <img src="https://mvivier69.github.io/soleil-b/images/logo.png" alt="Logo Soleil Beaujolais">
+    <div class="textes">
+      <p class="nom">Soleil Beaujolais</p>
+      <p class="bl">Énergie citoyenne en Beaujolais</p>
+    </div>
+  </div>
+
+
+  <header class="masthead">
+    <div class="kicker">
+      <span class="eyebrow">Manuel d'utilisation</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="18" r="2.4"/><path d="M10.4 6.9 6.6 15.6M13.6 6.9l3.8 8.7M7.4 18h9.2"/></svg> Autoconsommation collective</span>
+    </div>
+    <h1>Manuel du simulateur <em>ACC</em></h1>
+    <p class="lead">Mode d'emploi complet du simulateur d'autoconsommation collective : cadre réglementaire, paramètres, clés de répartition et lecture des résultats.</p>
+    <a class="backlink" href="Index_ACC.html">← Ouvrir le simulateur</a>
+  </header>
+
+  <h2 class="section-title"><span class="num">—</span> Sommaire</h2>
+  <div class="toc">
+    <h3>Dans ce manuel</h3>
+    <ol><li><a href="#s-principe">À quoi sert ce simulateur</a></li>
+<li><a href="#s-cadre">Cadre réglementaire à connaître</a></li>
+<li><a href="#s-prise">Prise en main en 6 étapes</a></li>
+<li><a href="#s-params">Les paramètres, un par un</a></li>
+<li><a href="#s-participants">Le tableau des participants</a></li>
+<li><a href="#s-modes">Les trois modes d'affectation</a></li>
+<li><a href="#s-resultats">Lire les résultats</a></li>
+<li><a href="#s-formules">Formules employées</a></li>
+<li><a href="#s-limites">Limites et pièges</a></li>
+<li><a href="#s-code">Personnaliser le fichier</a></li></ol>
+  </div>
+
+<h2 class="section-title" id="s-principe"><span class="num">01</span> À quoi sert ce simulateur</h2>
+<div class="prose">
+<p>Ce simulateur modélise une opération d'autoconsommation collective au sens de l'article L. 315-2 du code de l'énergie :
+une ou plusieurs installations partagent leur production entre des consommateurs proches, réunis au sein d'une
+<strong>personne morale organisatrice (PMO)</strong>, via le réseau public de distribution.</p>
+<p>L'électricité ne circule pas dans des câbles dédiés. Elle transite par le réseau, et le partage est une opération
+<strong>comptable</strong> : le gestionnaire de réseau affecte, toutes les 15 minutes, une part de la production à chaque
+consommateur selon une clé de répartition transmise par la PMO.</p>
+<div class="callout"><strong>La particularité de ce simulateur : il modélise deux points de vue simultanément.</strong>
+Celui du producteur (recettes ACC + surplus − charges − investissement) et celui des consommateurs (économie sur facture).
+Ces deux intérêts s'opposent partiellement à travers le prix de vente ACC. Un projet n'est viable que si les deux
+colonnes sont acceptables — d'où l'affichage conjoint.</div>
+</div>
+
+<h2 class="section-title" id="s-cadre"><span class="num">02</span> Cadre réglementaire à connaître</h2>
+<div class="prose">
+<p>Les règles ci-dessous conditionnent la validité même de votre opération, avant toute considération économique.</p>
+<ul>
+<li><strong>Périmètre géographique</strong> — par défaut, les points de soutirage et d'injection des participants les plus
+éloignés doivent être distants de <strong>2 km au maximum</strong>. Dérogations possibles : 10 km si tous les participants
+sont en communes rurales ou périurbaines (codes INSEE 3 à 7), 20 km en communes rurales (codes 5 à 7), 20 km si l'un des
+participants est un service d'incendie et de secours — sans démarche dans ce dernier cas — ou encore le territoire d'un
+EPCI à fiscalité propre. Depuis décembre 2025, les demandes de dérogation se déposent en ligne.</li>
+<li><strong>Puissance</strong> — la puissance cumulée d'une opération étendue doit être inférieure à 5 MW, seuil relevé
+jusqu'à 10 MW pour certaines opérations portées à l'échelle d'un EPCI.</li>
+<li><strong>Répartition</strong> — le décret n° 2026-561 du 26 juin 2026, rectifié le 5 juillet 2026, pose le principe
+d'une affectation prioritaire aux consommateurs de l'opération, dans la limite de leur consommation mesurée. Il définit
+la « part fixe » de production non affectée (nulle par défaut) et encadre le calendrier de transmission des coefficients.
+Une partie des dispositions s'applique depuis le 1<sup>er</sup> juillet 2026, le reste au 1<sup>er</sup> juillet 2027.</li>
+<li><strong>Accise sur l'électricité</strong> — les kilowattheures affectés relèvent d'un tarif particulier de
+<strong>0 €/MWh</strong> depuis le 1<sup>er</sup> mars 2025, pour une installation de moins de 1 MWc (articles L. 312-87
+et L. 312-79 du code des impositions sur les biens et services). Le rescrit fiscal de 2025 qui remettait ce taux en cause
+a été annulé par le Conseil d'État en mars 2026. C'est aujourd'hui le principal moteur économique du modèle.</li>
+<li><strong>TURPE</strong> — systématiquement prélevé sur tout kWh soutiré, y compris affecté. Une grille tarifaire
+spécifique existe sur option (article L. 315-3), mais elle est réservée, sous le TURPE 7, aux opérations dont
+<em>tous</em> les participants sont raccordés en aval du même poste de transformation HTA/BT. La CRE a relevé que cette
+option, pourtant très majoritairement favorable aux autoconsommateurs collectifs, est très faiblement souscrite, faute
+d'implémentation chez les fournisseurs.</li>
+</ul>
+<div class="callout"><strong>À vérifier avant tout engagement.</strong> Ces règles évoluent vite. Confirmez-les auprès de
+photovoltaique.info, du gestionnaire de réseau et des textes en vigueur avant de fonder une décision sur ce simulateur.</div>
+</div>
+
+<h2 class="section-title" id="s-prise"><span class="num">03</span> Prise en main en 6 étapes</h2>
+<div class="prose">
+<ol>
+<li><strong>Vérifiez d'abord l'éligibilité</strong> — périmètre géographique et puissance cumulée. Un projet hors périmètre
+n'a pas d'économie à simuler. Voir la section « Cadre réglementaire ».</li>
+<li><strong>Renseignez les participants</strong> avec leur consommation réelle et, surtout, une estimation honnête de leur
+simultanéité. Comparez le total des capacités d'absorption à la production : c'est le premier test de cohérence du projet.</li>
+<li><strong>Ajustez la production et l'investissement</strong> d'après le devis, sans oublier les frais spécifiques à l'ACC.</li>
+<li><strong>Calez les prix.</strong> Le prix réseau vient des factures ; le prix ACC est votre variable de décision.
+Faites-le varier et observez les deux colonnes — producteur et consommateurs — jusqu'à trouver un point acceptable
+pour les deux.</li>
+<li><strong>Comparez les trois modes d'affectation</strong> pour mesurer ce que coûte une clé mal ajustée.</li>
+<li><strong>Testez la robustesse</strong> : mettez la subvention à 0, la hausse du prix réseau à 0 %, la simultanéité
+10 points plus bas. Si le projet résiste, il est solide.</li>
+</ol>
+</div>
+
+<h2 class="section-title" id="s-params"><span class="num">04</span> Les paramètres, un par un</h2>
+<div class="prose">
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Production et investissement</h3>
+<div class="param" id="p-puissanceKwc">
+  <div class="param-head">
+    <h4>Puissance installée</h4>
+    <span class="chip">kWc</span>
+    <span class="chip">défaut&nbsp;: 24</span>
+    <span class="chip hyp">Hypothèse projet</span>
+    <a class="jump" href="Index_ACC.html#puissanceKwc">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La puissance crête cumulée de l'ensemble des installations participant à l'opération.</dd>
+    <dt>Comment le régler</dt><dd>Reprenez le devis. Contrainte réglementaire : la puissance cumulée d'une opération étendue doit rester <strong>inférieure à 5 MW</strong>, seuil porté jusqu'à 10 MW pour certaines opérations à l'échelle d'un EPCI. Second seuil, fiscal celui-là : <strong>1 MWc</strong>, au-delà duquel le tarif d'accise à 0 €/MWh ne s'applique plus.</dd>
+    <dt>Effet sur le résultat</dt><dd>Augmente la production, donc les recettes — mais au-delà de la capacité d'absorption des participants, chaque kWc supplémentaire ne fait que gonfler le surplus, valorisé bien moins cher. Comparez toujours la production affichée au total des capacités d'absorption.</dd>
+  </dl>
+</div>
+<div class="param" id="p-productible">
+  <div class="param-head">
+    <h4>Productible</h4>
+    <span class="chip">kWh/kWc/an</span>
+    <span class="chip">défaut&nbsp;: 1 100</span>
+    <span class="chip src">Sourcé — PVGIS</span>
+    <a class="jump" href="Index_ACC.html#productible">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'énergie produite annuellement par kWc installé, intégrant ensoleillement, orientation, inclinaison et pertes.</dd>
+    <dt>Comment le régler</dt><dd>PVGIS ou la carte de productible de photovoltaique.info, à l'adresse du site de production. Environ 1 150 à 1 250 dans la vallée du Rhône.</dd>
+    <dt>Effet sur le résultat</dt><dd>Proportionnel à la production totale de l'opération.</dd>
+  </dl>
+</div>
+<div class="param" id="p-investissement">
+  <div class="param-head">
+    <h4>Investissement</h4>
+    <span class="chip">€</span>
+    <span class="chip">défaut&nbsp;: 27 600</span>
+    <span class="chip hyp">Hypothèse projet</span>
+    <a class="jump" href="Index_ACC.html#investissement">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le coût complet du projet : matériel, pose, raccordement, études de faisabilité, frais juridiques de constitution de la PMO.</dd>
+    <dt>Comment le régler</dt><dd>Devis, en n'oubliant pas les postes spécifiques à l'ACC — étude de faisabilité, montage juridique, convention avec le gestionnaire de réseau — qui pèsent proportionnellement plus lourd sur les petites opérations.</dd>
+    <dt>Effet sur le résultat</dt><dd>Point de départ de la courbe de trésorerie du producteur. Premier déterminant du temps de retour.</dd>
+  </dl>
+</div>
+<div class="param" id="p-subvention">
+  <div class="param-head">
+    <h4>Subventions / apports</h4>
+    <span class="chip">€</span>
+    <span class="chip">défaut&nbsp;: 9 000</span>
+    <span class="chip hyp">Hypothèse projet</span>
+    <a class="jump" href="Index_ACC.html#subvention">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Les aides déduites de l'investissement : appels à projets régionaux, aides ADEME, apports citoyens non rémunérés, fonds propres d'une collectivité.</dd>
+    <dt>Comment le régler</dt><dd>Montant notifié. <strong>Point de vigilance</strong> : les aides ne sont pas cumulables entre elles dans tous les cas, et bénéficier de l'arrêté tarifaire implique de renoncer aux aides à l'investissement sur la production. Vérifiez la compatibilité avant de cumuler.</dd>
+    <dt>Effet sur le résultat</dt><dd>Réduit d'autant l'investissement net. Avec les valeurs par défaut, ramener ce champ à 0 fait basculer la VAN nettement en négatif — ce qui illustre la dépendance historique de l'ACC au soutien public.</dd>
+  </dl>
+</div>
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Prix de l'énergie</h3>
+<div class="param" id="p-prixReseau">
+  <div class="param-head">
+    <h4>Prix réseau évité (an 0)</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,1940</span>
+    <span class="chip src">Sourcé — TRV</span>
+    <a class="jump" href="Index_ACC.html#prixReseau">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le prix que les consommateurs paient aujourd'hui sans ACC. C'est la référence contre laquelle se mesure leur économie.</dd>
+    <dt>Comment le régler</dt><dd>Part variable TTC de la facture. La valeur par défaut correspond au tarif réglementé « Bleu » EDF, option Base, 3–6 kVA, en vigueur depuis le 1<sup>er</sup> février 2026. <strong>Attention</strong> : les participants non résidentiels ont le plus souvent des tarifs différenciés sur quatre plages temporelles (heures pleines / creuses, été / hiver). Une valeur unique est une simplification.</dd>
+    <dt>Effet sur le résultat</dt><dd>Plafond du gain consommateur. Tout l'équilibre de l'opération se joue dans l'espace entre ce prix et la somme « prix ACC + acheminement ».</dd>
+  </dl>
+</div>
+<div class="param" id="p-prixACC">
+  <div class="param-head">
+    <h4>Prix de vente ACC (part fourniture)</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,1200</span>
+    <span class="chip hyp">Hypothèse — décision PMO</span>
+    <a class="jump" href="Index_ACC.html#prixACC">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le prix auquel le producteur vend le kilowattheure partagé aux consommateurs de l'opération. C'est la <strong>variable de décision centrale</strong> de la PMO.</dd>
+    <dt>Comment le régler</dt><dd>C'est un arbitrage politique autant qu'économique : il doit rentabiliser l'installation tout en restant attractif face aux offres classiques. Son intérêt majeur pour les consommateurs n'est pas seulement d'être plus bas, mais d'être <strong>fixé sur plusieurs années</strong>, donc moins exposé aux aléas du marché.</dd>
+    <dt>Effet sur le résultat</dt><dd>Jeu à somme nulle entre producteur et consommateurs : ce que l'un gagne, l'autre le perd. Le simulateur affiche les deux côtés simultanément, précisément pour rendre cet arbitrage visible. Montez-le progressivement et observez le moment où l'économie consommateur devient négative — c'est la limite haute acceptable.</dd>
+  </dl>
+</div>
+<div class="param" id="p-acheminement">
+  <div class="param-head">
+    <h4>Réseau et taxes sur kWh ACC</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,0540</span>
+    <span class="chip hyp">Hypothèse à vérifier</span>
+    <a class="jump" href="Index_ACC.html#acheminement">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Ce que le consommateur continue de payer, en plus du prix ACC, sur chaque kilowattheure affecté : le TURPE et la TVA correspondante.</dd>
+    <dt>Comment le régler</dt><dd><strong>Le TURPE est systématiquement prélevé sur tout kWh soutiré</strong>, y compris les kWh affectés en ACC — même si l'électricité était cédée gratuitement. En revanche, l'accise bénéficie d'un tarif particulier à 0 €/MWh sous conditions (voir la section « Cadre réglementaire »). La valeur par défaut est un ordre de grandeur pour un client BT ≤ 36 kVA, à confirmer auprès du fournisseur.</dd>
+    <dt>Effet sur le résultat</dt><dd>Se retranche directement de l'économie consommateur. C'est ce poste qui explique pourquoi la marge de manœuvre d'une opération ACC est étroite : sur 0,1940 €/kWh évités, seuls 0,1400 environ restent à partager.</dd>
+  </dl>
+</div>
+<div class="param" id="p-prixSurplus">
+  <div class="param-head">
+    <h4>Valorisation du surplus collectif</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,0400</span>
+    <span class="chip hyp">Hypothèse à vérifier</span>
+    <a class="jump" href="Index_ACC.html#prixSurplus">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le tarif auquel est valorisée la production qui n'a été affectée à aucun consommateur, à chaque pas de mesure.</dd>
+    <dt>Comment le régler</dt><dd>Ce surplus peut être vendu — sous obligation d'achat ou en contrat de gré à gré — ou cédé sans rémunération au gestionnaire de réseau. Vérifiez le tarif applicable dans l'arrêté tarifaire en vigueur, en gardant à l'esprit qu'en bénéficier implique de renoncer aux aides à l'investissement. Saisissez 0 si le surplus est cédé gratuitement.</dd>
+    <dt>Effet sur le résultat</dt><dd>Détermine le coût d'opportunité d'une mauvaise clé de répartition. Plus l'écart avec le prix ACC est grand, plus le choix du mode d'affectation pèse — c'est le ressort de la section « Comparaison des clés ».</dd>
+  </dl>
+</div>
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Charges et hypothèses</h3>
+<div class="param" id="p-fraisPMO">
+  <div class="param-head">
+    <h4>Frais de PMO / gestion</h4>
+    <span class="chip">€/an</span>
+    <span class="chip">défaut&nbsp;: 900</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#fraisPMO">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le coût de fonctionnement de la personne morale organisatrice : animation, facturation des participants, plateforme de calcul et de suivi de la répartition, comptabilité, assurance.</dd>
+    <dt>Comment le régler</dt><dd>Très variable selon que la PMO est bénévole (association, collectif citoyen) ou qu'elle délègue à un prestataire. Les offres de plateformes du marché se facturent souvent à l'abonnement, parfois indexées au nombre de participants.</dd>
+    <dt>Effet sur le résultat</dt><dd>Charge fixe, donc <strong>d'autant plus lourde que l'opération est petite</strong>. C'est l'une des raisons pour lesquelles les très petites ACC peinent à s'équilibrer.</dd>
+  </dl>
+</div>
+<div class="param" id="p-compGestion">
+  <div class="param-head">
+    <h4>Composante de gestion majorée</h4>
+    <span class="chip">€/an et par participant</span>
+    <span class="chip">défaut&nbsp;: 30</span>
+    <span class="chip hyp">Hypothèse à vérifier</span>
+    <a class="jump" href="Index_ACC.html#compGestion">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le surcoût TURPE facturé par le gestionnaire de réseau pour l'affectation des index toutes les 15 minutes. Il s'applique à <strong>tous les participants</strong>, producteurs comme consommateurs, et quel que soit le type d'opération.</dd>
+    <dt>Comment le régler</dt><dd>Les montants dépendent du segment de puissance ; consultez les grilles TURPE en vigueur. Le simulateur multiplie ce montant par le nombre de participants plus un, pour compter le producteur.</dd>
+    <dt>Effet sur le résultat</dt><dd>Croît avec le nombre de participants. Une opération à trente foyers supporte ici trente fois cette charge, ce qui pèse contre l'idée intuitive selon laquelle « plus on est nombreux, mieux c'est ».</dd>
+  </dl>
+</div>
+<div class="param" id="p-maintenance">
+  <div class="param-head">
+    <h4>Exploitation et maintenance</h4>
+    <span class="chip">€/an</span>
+    <span class="chip">défaut&nbsp;: 500</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#maintenance">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'entretien technique de l'installation : maintenance préventive, assurance, supervision de production, provision pour remplacement d'onduleur.</dd>
+    <dt>Comment le régler</dt><dd>Ordre de grandeur courant : 15 à 25 €/kWc/an pour une installation de cette taille.</dd>
+    <dt>Effet sur le résultat</dt><dd>Charge annuelle récurrente qui se déduit des recettes.</dd>
+  </dl>
+</div>
+<div class="param" id="p-inflationReseau">
+  <div class="param-head">
+    <h4>Hausse du prix réseau</h4>
+    <span class="chip">%/an</span>
+    <span class="chip">défaut&nbsp;: 3</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#inflationReseau">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'indexation annuelle du prix évité, c'est-à-dire de la référence contre laquelle les consommateurs se comparent.</dd>
+    <dt>Comment le régler</dt><dd>Hypothèse. Testez 0 %, 2 % et 5 %.</dd>
+    <dt>Effet sur le résultat</dt><dd>Améliore l'économie des consommateurs année après année, <strong>si</strong> le prix ACC est indexé moins vite. L'écart entre ce paramètre et le suivant constitue le véritable argument commercial de l'opération.</dd>
+  </dl>
+</div>
+<div class="param" id="p-indexACC">
+  <div class="param-head">
+    <h4>Indexation du prix ACC</h4>
+    <span class="chip">%/an</span>
+    <span class="chip">défaut&nbsp;: 2</span>
+    <span class="chip hyp">Hypothèse — décision PMO</span>
+    <a class="jump" href="Index_ACC.html#indexACC">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'indexation annuelle du prix de vente ACC, généralement fixée par contrat sur plusieurs années.</dd>
+    <dt>Comment le régler</dt><dd>Souvent calée sur l'inflation générale, ou volontairement inférieure à la dérive attendue des prix de l'électricité — c'est ce différentiel qui constitue la promesse faite aux participants.</dd>
+    <dt>Effet sur le résultat</dt><dd>Si l'indexation ACC égale la hausse réseau, l'avantage consommateur reste constant en valeur. Si elle est inférieure, l'avantage s'élargit avec le temps — au détriment des recettes du producteur.</dd>
+  </dl>
+</div>
+<div class="param" id="p-degradation">
+  <div class="param-head">
+    <h4>Dégradation des panneaux</h4>
+    <span class="chip">%/an</span>
+    <span class="chip">défaut&nbsp;: 0,5</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#degradation">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La perte de rendement annuelle des modules.</dd>
+    <dt>Comment le régler</dt><dd>Fiche technique du module : 0,4 à 0,55 %/an pour du silicium cristallin récent.</dd>
+    <dt>Effet sur le résultat</dt><dd>Réduit progressivement la production, donc l'énergie affectée et les recettes.</dd>
+  </dl>
+</div>
+<div class="param" id="p-duree">
+  <div class="param-head">
+    <h4>Durée d'analyse</h4>
+    <span class="chip">ans</span>
+    <span class="chip">défaut&nbsp;: 25</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#duree">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'horizon du calcul.</dd>
+    <dt>Comment le régler</dt><dd>Généralement alignée sur la durée de vie des modules. À rapprocher toutefois de la durée des conventions signées avec les participants, souvent bien plus courte — un point de fragilité propre à l'ACC.</dd>
+    <dt>Effet sur le résultat</dt><dd>Allonger la durée améliore la VAN, mais suppose que les participants restent engagés, ce qui n'est jamais garanti sur 25 ans.</dd>
+  </dl>
+</div>
+<div class="param" id="p-tauxActualisation">
+  <div class="param-head">
+    <h4>Taux d'actualisation</h4>
+    <span class="chip">%</span>
+    <span class="chip">défaut&nbsp;: 4</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_ACC.html#tauxActualisation">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le taux ramenant les flux futurs à leur valeur présente, pour la VAN, et servant de seuil au TRI.</dd>
+    <dt>Comment le régler</dt><dd>Coût du financement pour une société de projet, taux sans risque pour une collectivité ou un collectif citoyen.</dd>
+    <dt>Effet sur le résultat</dt><dd>Un taux élevé pénalise fortement les projets à retour long, ce qui est le cas de la plupart des opérations ACC.</dd>
+  </dl>
+</div></div>
+
+<h2 class="section-title" id="s-participants"><span class="num">05</span> Le tableau des participants</h2>
+<div class="prose">
+<p>Le tableau des participants est le cœur du modèle. Chaque ligne se règle indépendamment, et quatre colonnes sont
+éditables.</p>
+<div class="param" id="p-participants">
+  <div class="param-head"><h4>Ordre</h4><span class="chip">rang</span>
+  <a class="jump" href="Index_ACC.html#partBody">Ouvrir dans le simulateur ↗</a></div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le rang du participant dans la cascade d'affectation. Les flèches ▲▼ permettent de le modifier.</dd>
+    <dt>Quand ça compte</dt><dd>Uniquement en mode « Ordre de priorité ». Sans effet sur les deux modes à clé statique.</dd>
+    <dt>Effet</dt><dd>En mode priorité, les premiers servis prennent tout ce qu'ils peuvent absorber avant de laisser la place aux suivants. Les derniers de la liste peuvent ne rien recevoir : c'est un <strong>choix de gouvernance</strong>, pas un paramètre technique.</dd>
+  </dl>
+</div>
+<div class="param" id="p-conso">
+  <div class="param-head"><h4>Consommation</h4><span class="chip">kWh/an</span><span class="chip hyp">Donnée participant</span>
+  <a class="jump" href="Index_ACC.html#partBody">Ouvrir dans le simulateur ↗</a></div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La consommation électrique annuelle du participant, tous usages confondus.</dd>
+    <dt>Comment la régler</dt><dd>Facture annuelle ou données du gestionnaire de réseau. Les participants doivent chacun disposer d'un contrat de fourniture actif, chez le fournisseur de leur choix.</dd>
+    <dt>Effet</dt><dd>Avec la simultanéité, elle détermine la capacité d'absorption, donc le plafond de ce que le participant peut recevoir.</dd>
+  </dl>
+</div>
+<div class="param" id="p-cle">
+  <div class="param-head"><h4>Clé statique</h4><span class="chip">%</span><span class="chip hyp">Décision PMO</span>
+  <a class="jump" href="Index_ACC.html#partBody">Ouvrir dans le simulateur ↗</a></div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le coefficient de répartition fixe attribué au participant, transmis au gestionnaire de réseau par la PMO.</dd>
+    <dt>Comment la régler</dt><dd>Saisie libre, ou générée par les boutons « Clé à parts égales » et « Clé au prorata des consommations ». La somme doit valoir 100 % : le simulateur alerte sinon. Au-delà de 100 %, les clés sont normalisées ; en deçà, la production non affectée part en surplus.</dd>
+    <dt>Effet</dt><dd>Utilisée uniquement en mode « Clé statique ». Une clé mal ajustée est la principale source de gaspillage d'une opération ACC — voir la section suivante.</dd>
+  </dl>
+</div>
+<div class="param" id="p-simul">
+  <div class="param-head"><h4>Simultanéité</h4><span class="chip">%</span><span class="chip hyp">Hypothèse — paramètre critique</span>
+  <a class="jump" href="Index_ACC.html#partBody">Ouvrir dans le simulateur ↗</a></div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La part de la consommation annuelle du participant qui a lieu <strong>pendant les heures de production solaire</strong>. C'est la traduction annuelle de la coïncidence entre profil de charge et profil de production.</dd>
+    <dt>Comment la régler</dt><dd>Un bâtiment tertiaire occupé en journée — mairie, école, commerce — se situe plutôt entre 60 et 75 %. Un logement occupé en soirée descend à 25-35 %. Une salle des fêtes utilisée le week-end se situe entre les deux. Seules des courbes de charge réelles permettent de trancher.</dd>
+    <dt>Effet</dt><dd><strong>Le paramètre le plus sensible du modèle</strong>, avant même le prix de vente. Il plafonne tout : une clé généreuse attribuée à un participant peu simultané ne produit aucun bénéfice, l'énergie partant en surplus.</dd>
+  </dl>
+</div>
+<div class="param" id="p-capacite">
+  <div class="param-head"><h4>Capacité d'absorption</h4><span class="chip">kWh/an — calculée</span>
+  <a class="jump" href="Index_ACC.html#totCap">Ouvrir dans le simulateur ↗</a></div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Consommation × simultanéité. Le plafond physique de ce qu'un participant peut recevoir sur l'année, <strong>quelle que soit la clé</strong>. C'est la traduction annuelle de la règle de l'article D. 315-4, selon laquelle l'énergie affectée ne peut excéder la consommation mesurée.</dd>
+    <dt>Comment la lire</dt><dd>Comparez le <strong>total</strong> affiché en pied de tableau à la production annuelle, indiquée dans l'indicateur « Production an 1 ». Si la production dépasse largement le total des capacités, l'installation est surdimensionnée pour ce collectif : aucune clé, si habile soit-elle, n'y changera rien.</dd>
+    <dt>Effet</dt><dd>Colonne calculée, non éditable. Elle rend visible la contrainte qui gouverne tout le modèle.</dd>
+  </dl>
+</div>
+</div>
+
+<h2 class="section-title" id="s-modes"><span class="num">06</span> Les trois modes d'affectation</h2>
+<div class="prose">
+<p>Trois modes d'affectation sont comparables, sélectionnables par les boutons de la section 03 du simulateur. Ils
+partagent exactement la même production : seule change la manière de l'attribuer — et donc la part qui finit en surplus.</p>
+<div class="param" id="p-mode-statique">
+  <div class="param-head"><h4>Clé statique</h4><span class="chip">mode par défaut</span></div>
+  <dl>
+    <dt>Principe</dt><dd>Des coefficients fixes, identiques à chaque pas de mesure, saisis dans le tableau. C'est le mode le plus simple et le plus répandu.</dd>
+    <dt>Sa limite</dt><dd>Si un participant se voit affecter plus d'énergie qu'il ne peut absorber, le reliquat <strong>n'est pas réaffecté</strong> aux autres : il bascule en surplus collectif, valorisé à un tarif bien inférieur.</dd>
+    <dt>Formule</dt><dd>Énergie(i) = min( Production × clé(i) , capacité(i) )</dd>
+  </dl>
+</div>
+<div class="param" id="p-mode-prorata">
+  <div class="param-head"><h4>Clé au prorata des consommations</h4><span class="chip">statique</span></div>
+  <dl>
+    <dt>Principe</dt><dd>Clé fixe elle aussi, mais calculée automatiquement au prorata des consommations annuelles. Elle épouse mieux le poids réel de chaque participant qu'une répartition arbitraire.</dd>
+    <dt>Sa limite</dt><dd>Elle ne s'adapte pas davantage aux variations instantanées. Elle réduit le gaspillage sans l'éliminer, car elle ignore la simultanéité : un gros consommateur nocturne recevra une part importante qu'il ne pourra pas absorber.</dd>
+    <dt>À noter</dt><dd>Dans ce mode, la colonne « Clé statique » du tableau est ignorée.</dd>
+  </dl>
+</div>
+<div class="param" id="p-mode-priorite">
+  <div class="param-head"><h4>Ordre de priorité (maximisation)</h4><span class="chip hyp">décret n° 2026-561</span></div>
+  <dl>
+    <dt>Principe</dt><dd>La production est affectée séquentiellement, dans l'ordre du tableau : chacun prend ce qu'il peut absorber avant de laisser la place au suivant. C'est la logique de <strong>maximisation de l'autoconsommation</strong> introduite par le décret du 26 juin 2026, dont l'entrée en vigueur est prévue au 1<sup>er</sup> juillet 2027.</dd>
+    <dt>Son avantage</dt><dd>Il réduit mécaniquement le surplus, donc améliore simultanément les recettes du producteur <em>et</em> les économies des consommateurs. C'est le seul mode où les deux camps gagnent ensemble.</dd>
+    <dt>Sa contrepartie</dt><dd>La répartition devient inégale : les derniers de la liste peuvent ne rien recevoir. L'équité devient un sujet de gouvernance que le calcul ne tranche pas.</dd>
+  </dl>
+</div>
+<p>Le <strong>tableau comparatif</strong> et le <strong>graphique en barres empilées</strong> présentent les trois modes côte
+à côte pour l'année 1, avec la VAN sur toute la durée. Le commentaire sous le tableau chiffre automatiquement l'écart
+entre le mode actif et le meilleur des trois.</p>
+<div class="callout"><strong>Limite à garder en tête.</strong> Le modèle raisonne en énergie annuelle. Au pas réel de
+15 minutes, une clé dynamique ex-ante ne peut pas anticiper parfaitement les consommations : les écarts affichés
+constituent donc une <strong>borne haute</strong> du gain réellement atteignable.</div>
+</div>
+
+<h2 class="section-title" id="s-resultats"><span class="num">07</span> Lire les résultats</h2>
+<div class="prose">
+<p>Huit indicateurs sont affichés, quatre par point de vue.</p>
+<ul>
+<li><strong>Production an 1</strong> — avec, en sous-titre, le total des capacités d'absorption. Le rapport entre les deux
+dit immédiatement si l'installation est bien dimensionnée pour ce collectif.</li>
+<li><strong>Taux d'ACC</strong> — part de la production effectivement partagée localement. Le complément part en surplus.</li>
+<li><strong>Couverture des besoins</strong> — part de la consommation totale des participants couverte par l'ACC.
+À ne pas confondre avec le précédent : on peut avoir un taux d'ACC élevé et une couverture faible, si l'installation
+est petite devant les besoins.</li>
+<li><strong>VAN, TRI et temps de retour producteur</strong> — même lecture que dans les deux autres simulateurs.
+Le TRI se compare au seuil affiché en dessous.</li>
+<li><strong>Économie consommateurs</strong> — année 1 puis cumul, tous participants confondus. Si ce chiffre est négatif,
+le prix ACC est trop élevé : les participants paieraient plus cher que le réseau, et l'opération n'a pas de sens
+pour eux.</li>
+</ul>
+<p>Le <strong>graphique de trésorerie</strong> superpose trois courbes : le cumul producteur non actualisé, le même
+actualisé, et les économies cumulées des consommateurs. Ces dernières partent de zéro, les consommateurs n'investissant
+rien. Le <strong>graphique de répartition</strong> met en regard, pour chaque participant, sa consommation, sa capacité
+d'absorption et l'énergie réellement affectée — l'écart entre les deux dernières barres visualise la marge perdue.</p>
+</div>
+
+<h2 class="section-title" id="s-formules"><span class="num">08</span> Formules employées</h2>
+<div class="prose">
+<p>Pour chaque année t et chaque participant i :</p>
+<div class="formula">Production(t) = puissance × productible × (1 − dégradation)<sup>t−1</sup></div>
+<div class="formula">Capacité(i) = consommation(i) × simultanéité(i)</div>
+<div class="formula">Énergie ACC(i,t) = selon le mode d'affectation retenu, plafonnée par Capacité(i)</div>
+<div class="formula">Surplus collectif(t) = Production(t) − Σ Énergie ACC(i,t)</div>
+<div class="formula">Prix réseau(t) = prix réseau × (1 + hausse réseau)<sup>t−1</sup></div>
+<div class="formula">Prix ACC(t) = prix ACC × (1 + indexation ACC)<sup>t−1</sup></div>
+<div class="formula">Recettes producteur(t) = Σ Énergie ACC × Prix ACC(t) + Surplus × prix surplus</div>
+<div class="formula">Charges(t) = maintenance + frais PMO + composante gestion × (nb participants + 1)</div>
+<div class="formula">Économie conso(i,t) = Énergie ACC(i,t) × [ Prix réseau(t) − Prix ACC(t) − acheminement ]</div>
+<div class="formula">VAN = −Investissement net + Σ Flux net(t) / (1 + taux d'actualisation)<sup>t</sup></div>
+</div>
+
+<h2 class="section-title" id="s-limites"><span class="num">09</span> Limites et pièges</h2>
+<div class="prose">
+<ul>
+<li><strong>Raisonnement annuel, pas au pas de 15 minutes.</strong> La simultanéité remplace une simulation sur courbes de
+charge réelles. C'est suffisant pour une pré-étude et pour comparer des modes d'affectation, insuffisant pour engager
+un investissement.</li>
+<li><strong>Un prix réseau unique</strong> pour tous les participants, alors que les tarifs varient d'un consommateur à
+l'autre, et le plus souvent sur quatre plages temporelles pour les non-résidentiels.</li>
+<li><strong>L'acheminement et le surplus sont des hypothèses</strong>, pas des valeurs sourcées. Ils doivent être
+confirmés auprès du fournisseur et de l'arrêté tarifaire en vigueur.</li>
+<li><strong>Le TURPE spécifique optionnel n'est pas modélisé</strong> — il supposerait de distinguer quatre plages
+temporelles et de vérifier l'éligibilité (même poste HTA/BT).</li>
+<li><strong>Aucune fiscalité</strong> sur les recettes du producteur, ni IFER, ni taxe foncière, ni imposition des
+bénéfices.</li>
+<li><strong>Aucun financement</strong> : l'investissement est supposé payé comptant en année 0.</li>
+<li><strong>Le collectif est supposé stable sur toute la durée.</strong> Dans la réalité, un participant qui déménage
+ou se retire oblige à revoir la clé — un risque propre à l'ACC, absent des autres modèles.</li>
+<li><strong>La « part fixe » de production non affectée</strong> introduite par le décret de 2026 n'est pas modélisée :
+elle est supposée nulle, ce qui est le cas par défaut.</li>
+</ul>
+</div>
+
+<h2 class="section-title" id="s-code"><span class="num">10</span> Personnaliser le fichier</h2>
+<div class="prose">
+<p>Le fichier est un HTML autonome. Quatre zones structurent la personnalisation.</p>
+<ul>
+<li><strong><code>PARAMS</code></strong> — les valeurs par défaut des seize champs globaux. Les attributs
+<code>value</code> du HTML font foi à l'affichage : modifiez les deux pour rester cohérent.</li>
+<li><strong><code>PARTICIPANTS</code></strong> — le collectif initial, sous forme de liste d'objets
+<code>{nom, conso, cle, simul}</code>. Remplacez-le par votre propre collectif pour ouvrir le simulateur directement
+sur votre projet.</li>
+<li><strong><code>MODES</code></strong> — les libellés et les descriptions des trois modes d'affectation. Le texte
+affiché sous les boutons se règle ici.</li>
+<li><strong><code>affecter()</code></strong> — la fonction qui répartit la production. C'est le point d'extension naturel
+si vous souhaitez ajouter un quatrième mode : une clé saisonnière, ou une priorité pondérée.</li>
+</ul>
+<p>Le fichier appelle Google Fonts et Chart.js en ligne. Hors connexion, les calculs et les tableaux fonctionnent, mais
+les graphiques ne s'affichent pas.</p>
+</div>
+
+  <footer>
+    Manuel du simulateur <strong>Autoconsommation collective</strong>. Les liens « Ouvrir dans le simulateur » supposent que le manuel et
+    le fichier <strong>Index_ACC.html</strong> se trouvent dans le même dossier.
+    Ce document décrit un outil d'estimation ; il ne constitue ni un conseil financier, ni un conseil juridique.
+  </footer>
+
+</div>
+</body>
+</html>

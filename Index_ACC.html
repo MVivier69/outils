@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12C4EE">
+<link rel="icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<link rel="apple-touch-icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<title>Simulateur d'autoconsommation collective (ACC)</title>
+
+<!-- Charte graphique reprise de l'application Soleil Beaujolais
+     https://mvivier69.github.io/soleil-b/  — police : pile système -->
+<!-- Graphiques -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<style>
+/* ════════════════════════════════════════════════════════════════
+   CHARTE GRAPHIQUE PARTAGÉE  (identique aux simulateurs Panneau / Batterie)
+   Modifiez librement ces variables pour changer l'apparence.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  /* Palette reprise de l'application Soleil Beaujolais (soleil-b) */
+  --principale:#12C4EE;     /* cyan — couleur principale        */
+  --accent:#12C4EE;         /* alias : accent primaire = cyan   */
+  --accent-2:#FAC800;       /* jaune — accent secondaire        */
+  --encre:#3F5570;          /* bleu-ardoise — encre de l'app    */
+  --ink:#3F5570;            /* texte principal                  */
+  --ink-soft:#5F7691;       /* texte secondaire                 */
+  --ink-faint:#899BAD;      /* notes / unités                   */
+  --paper:#F2FAFD;          /* fond de l'app                    */
+  --paper-2:#E7F4FA;        /* fond alterné                     */
+  --card:#FFFFFF;           /* fond des cartes                  */
+  --line:rgba(63,85,112,.14);      /* trait de l'app            */
+  --line-strong:rgba(63,85,112,.26);
+  --accent-soft:#E3F7FD;    /* aplat cyan très clair            */
+  --accent-ink:#0B7C9B;     /* texte sur aplat cyan             */
+  --jaune-soft:#FFF6D9;     /* aplat jaune                      */
+  --jaune-ink:#8A6A00;      /* texte sur aplat jaune            */
+  --slate:#7A8CA3;          /* série secondaire (graphes)       */
+  --good:#0E9F6E;           /* valeur favorable                 */
+  --bad:#E02424;            /* valeur défavorable               */
+  --shadow:0 1px 2px rgba(63,85,112,.06), 0 6px 18px rgba(63,85,112,.08);
+  --shadow-fort:0 8px 26px rgba(63,85,112,.16);
+  --radius:14px;
+  --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:var(--paper);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow-wrap:break-word;
+  font-variant-numeric:tabular-nums;
+}
+img{display:block;max-width:100%}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 60px}
+
+/* ── Bandeau / masthead ─────────────────────────────────────────── */
+.masthead{padding:10px 0 18px;border-bottom:1px solid var(--line)}
+.kicker{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 13px;border-radius:999px;
+  background:var(--card);box-shadow:var(--shadow);
+  color:var(--principale);
+  font-size:.82rem;font-weight:700;
+}
+.badge svg{width:15px;height:15px}
+.eyebrow{
+  font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;
+}
+h1{
+  font-family:var(--font-display);
+  font-weight:700;font-size:clamp(1.5rem,4.5vw,2.1rem);
+  line-height:1.15;letter-spacing:-.015em;margin:0;
+}
+h1 em{font-style:normal;color:var(--principale)}
+.lead{margin:8px 0 0;max-width:62ch;color:var(--ink);opacity:.78;font-size:.95rem}
+
+/* ── Note encadrée (motif « à la une » de l'app) ────────────────── */
+.note{
+  display:flex;gap:12px;margin-top:16px;padding:13px 14px;
+  background:var(--card);border-radius:var(--radius);
+  border-left:5px solid var(--accent-2);
+  box-shadow:var(--shadow);font-size:.88rem;color:var(--ink);opacity:.95;
+}
+.note svg{flex:none;width:18px;height:18px;color:var(--principale);margin-top:2px}
+.note strong{font-weight:700}
+
+/* ── Titres de section (motif de l'app : capitales + filet) ─────── */
+.section-title{
+  display:flex;align-items:center;gap:10px;
+  margin:28px 2px 12px;
+  font-family:var(--font-display);
+  font-size:.76rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.9;
+}
+.section-title::after{
+  content:"";flex:1 1 auto;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent-2),transparent);
+}
+.section-title .num{
+  font-size:.72rem;font-weight:700;color:var(--principale);letter-spacing:.08em;
+}
+
+/* ── Cartes de saisie ───────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.card{
+  background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:16px 16px 4px;
+}
+.card h3{
+  margin:0 0 2px;font-size:.7rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink);opacity:.6;
+}
+.field{padding:12px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{display:block;font-size:.92rem;font-weight:600;color:var(--ink)}
+.field .hint{font-size:.78rem;color:var(--ink);opacity:.6;margin:1px 0 8px}
+.inputline{display:flex;align-items:stretch;gap:0}
+.inputline input{
+  flex:1;min-width:0;font-family:var(--font-body);font-size:1rem;font-weight:700;
+  color:var(--ink);background:var(--paper);border:1px solid var(--line);
+  border-radius:10px 0 0 10px;padding:9px 12px;font-variant-numeric:tabular-nums;
+}
+.inputline.solo input{border-radius:10px}
+.inputline input:focus{outline:none;border-color:var(--principale);box-shadow:0 0 0 3px var(--accent-soft)}
+.unit{
+  display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:600;
+  color:var(--ink);opacity:.65;background:var(--paper-2);
+  border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;white-space:nowrap;
+}
+
+/* ── Boutons (pilules de l'app) ─────────────────────────────────── */
+.actions{margin:18px 0 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+button.run{
+  appearance:none;border:0;cursor:pointer;font:inherit;
+  font-size:.9rem;font-weight:700;color:#fff;
+  background:var(--principale);border-radius:999px;padding:11px 22px;
+  box-shadow:var(--shadow);transition:transform .15s ease, filter .15s ease;
+}
+button.run:hover{filter:brightness(1.06);transform:translateY(-2px)}
+button.run:active{transform:translateY(0)}
+.live{font-size:.8rem;color:var(--ink);opacity:.6}
+
+/* ── KPIs ───────────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px}
+.kpi{
+  position:relative;background:var(--card);border-radius:var(--radius);
+  padding:14px 15px 13px;overflow:hidden;box-shadow:var(--shadow);
+  transition:transform .15s ease;
+}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--principale)}
+.kpi .klabel{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--ink);opacity:.6;text-transform:uppercase}
+.kpi .kval{font-family:var(--font-display);font-weight:700;font-size:1.65rem;letter-spacing:-.02em;margin:5px 0 2px;line-height:1.1}
+.kpi .ksub{font-size:.78rem;color:var(--ink);opacity:.7}
+.kpi .kval.pos{color:var(--good)} .kpi .kval.neg{color:var(--bad)}
+
+/* ── Graphique ──────────────────────────────────────────────────── */
+.chart-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chart-head h3{font-family:var(--font-display);font-weight:700;font-size:1rem;margin:0}
+.chart-head p{margin:0;font-size:.78rem;color:var(--ink);opacity:.6}
+.chart-box{position:relative;height:340px}
+
+/* ── Tableau ────────────────────────────────────────────────────── */
+.table-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:560px}
+th,td{padding:10px 14px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;background:var(--paper-2);border-bottom:1px solid var(--line);
+}
+tbody td{border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even){background:var(--paper)}
+tbody tr.cross{background:var(--accent-soft)}
+tbody tr.cross td{font-weight:700;color:var(--accent-ink)}
+
+/* ── Méthodologie (accordéon) ───────────────────────────────────── */
+details.method{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+details.method>summary{
+  list-style:none;cursor:pointer;padding:14px 16px;font-family:var(--font-display);
+  font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:space-between;
+}
+details.method>summary::-webkit-details-marker{display:none}
+details.method>summary .chev{transition:transform .2s ease;color:var(--principale)}
+details.method[open]>summary .chev{transform:rotate(90deg)}
+.method-body{padding:2px 16px 18px;border-top:1px solid var(--line)}
+.method-body h4{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);opacity:.6;margin:16px 0 6px}
+.formula{
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:.8rem;
+  background:var(--paper);border-radius:10px;
+  padding:8px 12px;margin:6px 0;color:var(--ink);
+}
+.src{font-size:.85rem;color:var(--ink);opacity:.85;margin:6px 0;padding-left:16px;position:relative}
+.src::before{
+  content:"";position:absolute;left:0;top:.55em;
+  width:7px;height:7px;border-radius:50%;background:var(--principale);
+}
+
+/* ── Pied de page ───────────────────────────────────────────────── */
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--ink);opacity:.6;text-align:center}
+
+/* ── Interactions et accessibilité (repris de l'app) ────────────── */
+@media (hover:hover){
+  .kpi:hover,.card:hover{transform:translateY(-2px)}
+  .card{transition:transform .15s ease}
+}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
+  outline:3px solid var(--accent-2);outline-offset:2px;border-radius:6px;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+@media (max-width:359px){.wrap{padding:0 9px 60px}}
+
+/* ── Bannière et identité (motif de l'application soleil-b) ─────── */
+.banniere{
+  display:block;margin:0 -16px;overflow:hidden;background:var(--principale);
+}
+.banniere img{width:100%;height:var(--hauteur-banniere,130px);object-fit:cover}
+.identite{display:flex;align-items:center;gap:12px;padding:14px 2px 2px}
+.identite img{width:46px;height:46px;border-radius:50%;flex:0 0 auto}
+.identite .textes{min-width:0}
+.identite .nom{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.identite .bl{margin:2px 0 0;font-size:.82rem;opacity:.72}
+@media (max-width:359px){.banniere{margin:0 -9px}}
+
+/* ════════════════════════════════════════════════════════════════
+   AJOUTS SPÉCIFIQUES ACC — tableau de participants éditable
+   ════════════════════════════════════════════════════════════════ */
+.part-table input{
+  width:100%;font-family:var(--font-body);font-size:14px;font-weight:600;
+  color:var(--ink);background:var(--paper);border:1px solid var(--line-strong);
+  border-radius:8px;padding:7px 9px;text-align:right;font-variant-numeric:tabular-nums;
+}
+.part-table input[type=text]{text-align:left;font-weight:500}
+.part-table input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.part-table td{padding:8px 12px}
+.part-table tfoot td{
+  border-top:1px solid var(--line-strong);background:var(--paper-2);
+  font-weight:700;font-size:13px;
+}
+button.mini{
+  font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);
+  background:var(--paper-2);border:1px solid var(--line-strong);border-radius:9px;
+  padding:8px 14px;cursor:pointer;transition:background .15s ease;
+}
+button.mini:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.modes{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0}
+.mode-btn{
+  font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--ink);
+  background:var(--card);border:1px solid var(--line-strong);border-radius:11px;
+  padding:11px 18px;cursor:pointer;transition:all .15s ease;
+}
+.mode-btn:hover{border-color:var(--accent)}
+.mode-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow)}
+.mode-desc{
+  margin-top:12px;padding:14px 16px;background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--accent);border-radius:12px;font-size:13.5px;color:var(--ink-soft);
+}
+.mode-desc strong{color:var(--ink)}
+.cap-cell{font-weight:600;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+button.del{
+  border:1px solid var(--line-strong);background:var(--card);color:var(--ink-faint);
+  border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:15px;line-height:1;
+}
+button.del:hover{color:var(--bad);border-color:var(--bad)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--line)}
+.warn{
+  display:none;margin-top:12px;padding:12px 16px;border-radius:12px;
+  background:var(--jaune-soft);border:1px solid rgba(250,200,0,.45);color:var(--jaune-ink);font-size:13.5px;font-weight:500;
+}
+.warn.show{display:block}
+
+/* ── Lien d'aide vers le manuel ─────────────────────────────────── */
+.help{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;margin-left:6px;border-radius:50%;
+  background:var(--paper-2);border:1px solid var(--line-strong);
+  color:var(--ink-faint);font-size:11px;font-weight:700;text-decoration:none;
+  vertical-align:1px;transition:all .15s ease;
+}
+.help:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.manual-link{
+  display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:10px 16px;
+  background:var(--card);border:1px solid var(--line-strong);border-radius:11px;
+  text-decoration:none;font-size:14px;font-weight:600;color:var(--ink);box-shadow:var(--shadow);
+}
+.manual-link:hover{border-color:var(--accent);color:var(--accent-ink)}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- Bannière et identité — images du dépôt soleil-b.
+       Pour utiliser d'autres visuels, remplacez simplement les deux URL ci-dessous. -->
+  <a class="banniere" href="https://mvivier69.github.io/soleil-b/" target="_blank" rel="noopener">
+    <img src="https://mvivier69.github.io/soleil-b/images/banniere.jpg" alt="">
+  </a>
+  <div class="identite">
+    <img src="https://mvivier69.github.io/soleil-b/images/logo.png" alt="Logo Soleil Beaujolais">
+    <div class="textes">
+      <p class="nom">Soleil Beaujolais</p>
+      <p class="bl">Énergie citoyenne en Beaujolais</p>
+    </div>
+  </div>
+
+
+  <!-- ════════════════ BANDEAU ════════════════ -->
+  <header class="masthead">
+    <div class="kicker">
+      <span class="eyebrow">Outil de simulation</span>
+      <span class="badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="18" r="2.4"/><path d="M10.4 6.9 6.6 15.6M13.6 6.9l3.8 8.7M7.4 18h9.2"/>
+        </svg>
+        Autoconsommation collective
+      </span>
+    </div>
+    <h1>Simulateur d'<em>autoconsommation</em> collective</h1>
+    <p class="lead">Opération ACC au sens de l'article L. 315-2 du code de l'énergie : une ou plusieurs installations partagent leur production entre des consommateurs proches, réunis dans une personne morale organisatrice (PMO), via le réseau public de distribution.</p>
+
+    <div class="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <div>Le modèle simule <strong>deux points de vue</strong> : celui du <strong>producteur</strong> (recettes ACC + surplus − charges − investissement) et celui des <strong>consommateurs</strong> (économie sur la facture). Les kWh affectés restent soumis au <strong>TURPE</strong> ; ils bénéficient en revanche du tarif particulier d'accise à 0 €/MWh sous conditions. Toutes les hypothèses sont éditables et ne constituent pas une garantie.</div>
+    </div>
+    <a class="manual-link" href="Manuel_ACC.html" target="_blank">📘 Manuel d'utilisation complet</a>
+  </header>
+
+  <!-- ════════════════ SAISIE ════════════════ -->
+  <h2 class="section-title"><span class="num">01</span> Production &amp; investissement</h2>
+  <div class="grid">
+
+    <div class="card">
+      <h3>Installation de production</h3>
+      <div class="field">
+        <label for="puissanceKwc">Puissance installée<a class="help" href="Manuel_ACC.html#p-puissanceKwc" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Puissance crête cumulée de l'opération.</div>
+        <div class="inputline"><input id="puissanceKwc" type="number" step="1" value="24"><span class="unit">kWc</span></div>
+      </div>
+      <div class="field">
+        <label for="productible">Productible<a class="help" href="Manuel_ACC.html#p-productible" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Énergie produite par kWc et par an (PVGIS).</div>
+        <div class="inputline"><input id="productible" type="number" step="10" value="1100"><span class="unit">kWh/kWc/an</span></div>
+      </div>
+      <div class="field">
+        <label for="investissement">Investissement<a class="help" href="Manuel_ACC.html#p-investissement" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Matériel, pose, raccordement, études.</div>
+        <div class="inputline"><input id="investissement" type="number" step="500" value="27600"><span class="unit">€</span></div>
+      </div>
+      <div class="field">
+        <label for="subvention">Subventions / apports<a class="help" href="Manuel_ACC.html#p-subvention" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Aides déduites de l'investissement (non cumulables avec le tarif d'achat).</div>
+        <div class="inputline"><input id="subvention" type="number" step="500" value="9000"><span class="unit">€</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Prix de l'énergie</h3>
+      <div class="field">
+        <label for="prixReseau">Prix réseau évité (an 0)<a class="help" href="Manuel_ACC.html#p-prixReseau" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Prix payé sans ACC. Tarif réglementé « Bleu » EDF, option Base, 3–6 kVA (depuis le 1er février 2026).</div>
+        <div class="inputline"><input id="prixReseau" type="number" step="0.0001" value="0.1940"><span class="unit">€/kWh</span></div>
+      </div>
+      <div class="field">
+        <label for="prixACC">Prix de vente ACC (part fourniture)<a class="help" href="Manuel_ACC.html#p-prixACC" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Prix du kWh partagé, fixé par la PMO.</div>
+        <div class="inputline"><input id="prixACC" type="number" step="0.0001" value="0.1200"><span class="unit">€/kWh</span></div>
+      </div>
+      <div class="field">
+        <label for="acheminement">Réseau &amp; taxes sur kWh ACC<a class="help" href="Manuel_ACC.html#p-acheminement" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">TURPE + TVA restant dus sur les kWh affectés. Hypothèse à ajuster.</div>
+        <div class="inputline"><input id="acheminement" type="number" step="0.0001" value="0.0540"><span class="unit">€/kWh</span></div>
+      </div>
+      <div class="field">
+        <label for="prixSurplus">Valorisation du surplus collectif<a class="help" href="Manuel_ACC.html#p-prixSurplus" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Tarif d'achat ou PPA sur les kWh non affectés. À vérifier dans l'arrêté en vigueur.</div>
+        <div class="inputline"><input id="prixSurplus" type="number" step="0.0001" value="0.0400"><span class="unit">€/kWh</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Charges &amp; hypothèses</h3>
+      <div class="field">
+        <label for="fraisPMO">Frais de PMO / gestion<a class="help" href="Manuel_ACC.html#p-fraisPMO" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Animation, facturation, plateforme de répartition.</div>
+        <div class="inputline"><input id="fraisPMO" type="number" step="100" value="900"><span class="unit">€/an</span></div>
+      </div>
+      <div class="field">
+        <label for="compGestion">Composante de gestion majorée<a class="help" href="Manuel_ACC.html#p-compGestion" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Surcoût TURPE facturé à chaque participant (producteurs + consommateurs).</div>
+        <div class="inputline"><input id="compGestion" type="number" step="1" value="30"><span class="unit">€/an/part.</span></div>
+      </div>
+      <div class="field">
+        <label for="maintenance">Exploitation &amp; maintenance<a class="help" href="Manuel_ACC.html#p-maintenance" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Entretien, assurance, suivi de production.</div>
+        <div class="inputline"><input id="maintenance" type="number" step="50" value="500"><span class="unit">€/an</span></div>
+      </div>
+      <div class="field">
+        <label for="inflationReseau">Hausse du prix réseau<a class="help" href="Manuel_ACC.html#p-inflationReseau" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Indexation annuelle du prix évité.</div>
+        <div class="inputline"><input id="inflationReseau" type="number" step="0.5" value="3"><span class="unit">%/an</span></div>
+      </div>
+      <div class="field">
+        <label for="indexACC">Indexation du prix ACC<a class="help" href="Manuel_ACC.html#p-indexACC" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Souvent inférieure au marché : c'est l'attrait du contrat local.</div>
+        <div class="inputline"><input id="indexACC" type="number" step="0.5" value="2"><span class="unit">%/an</span></div>
+      </div>
+      <div class="field">
+        <label for="degradation">Dégradation des panneaux<a class="help" href="Manuel_ACC.html#p-degradation" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Perte de rendement annuelle.</div>
+        <div class="inputline"><input id="degradation" type="number" step="0.1" value="0.5"><span class="unit">%/an</span></div>
+      </div>
+      <div class="field">
+        <label for="duree">Durée d'analyse<a class="help" href="Manuel_ACC.html#p-duree" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Horizon de l'étude.</div>
+        <div class="inputline"><input id="duree" type="number" step="1" value="25"><span class="unit">ans</span></div>
+      </div>
+      <div class="field">
+        <label for="tauxActualisation">Taux d'actualisation<a class="help" href="Manuel_ACC.html#p-tauxActualisation" target="_blank" title="Voir ce paramètre dans le manuel">?</a></label>
+        <div class="hint">Sert au calcul de la VAN et au seuil du TRI.</div>
+        <div class="inputline"><input id="tauxActualisation" type="number" step="0.5" value="4"><span class="unit">%</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════ PARTICIPANTS ════════════════ -->
+  <h2 class="section-title"><span class="num">02</span> Participants &amp; clé de répartition</h2>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table class="part-table">
+        <thead>
+          <tr>
+            <th style="width:60px">Ordre<a class="help" href="Manuel_ACC.html#p-participants" target="_blank" title="Voir dans le manuel">?</a></th>
+            <th style="min-width:170px">Consommateur</th>
+            <th>Consommation (kWh/an)<a class="help" href="Manuel_ACC.html#p-conso" target="_blank" title="Voir dans le manuel">?</a></th>
+            <th>Clé statique (%)<a class="help" href="Manuel_ACC.html#p-cle" target="_blank" title="Voir dans le manuel">?</a></th>
+            <th>Simultanéité (%)<a class="help" href="Manuel_ACC.html#p-simul" target="_blank" title="Voir dans le manuel">?</a></th>
+            <th>Capacité d'absorption<a class="help" href="Manuel_ACC.html#p-capacite" target="_blank" title="Voir dans le manuel">?</a></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="partBody"></tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td>Total</td>
+            <td id="totConso">—</td>
+            <td id="totCle">—</td>
+            <td></td>
+            <td id="totCap">—</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="toolbar">
+      <button class="mini" onclick="ajouterParticipant()">+ Ajouter un participant</button>
+      <button class="mini" onclick="repartirEgal()">Clé à parts égales</button>
+      <button class="mini" onclick="repartirProrata()">Clé au prorata des consommations</button>
+    </div>
+    <div class="toolbar" style="color:var(--ink-faint);font-size:13px;display:block">
+      La <strong>simultanéité</strong> est la part de la consommation annuelle qui a lieu pendant les heures de production.
+      La <strong>capacité d'absorption</strong> qui en découle (consommation × simultanéité) plafonne l'énergie qu'un participant
+      peut réellement recevoir, quelle que soit la clé. L'<strong>ordre</strong> sert au mode « priorité ».
+    </div>
+  </div>
+  <div class="warn" id="warnCle"></div>
+
+  <!-- ════════════════ MODE D'AFFECTATION ════════════════ -->
+  <h2 class="section-title"><span class="num">03</span> Mode d'affectation de l'électricité<a class="help" href="Manuel_ACC.html#p-mode-statique" target="_blank" title="Voir dans le manuel">?</a></h2>
+  <div class="modes" id="modes"></div>
+  <div class="mode-desc" id="modeDesc"></div>
+  <p style="margin:10px 0 0;font-size:13px"><a href="Manuel_ACC.html#s-modes" target="_blank" style="color:var(--accent);font-weight:600;text-decoration:none">Comprendre les trois modes et l'effet du décret n° 2026-561 →</a></p>
+
+  <div class="actions">
+    <button class="run" onclick="simuler()">Lancer la simulation</button>
+    <span class="live">Recalcul automatique à chaque modification.</span>
+  </div>
+
+  <!-- ════════════════ RÉSULTATS ════════════════ -->
+  <h2 class="section-title"><span class="num">04</span> Résultats — année 1 &amp; rentabilité</h2>
+  <div class="kpis" id="kpis"></div>
+
+  <!-- ════════════════ COMPARAISON DES CLÉS ════════════════ -->
+  <h2 class="section-title"><span class="num">05</span> Comparaison des clés de répartition</h2>
+  <div class="table-card"><div class="table-scroll">
+    <table id="tabModes">
+      <thead>
+        <tr><th>Mode d'affectation</th><th>Énergie ACC an 1</th><th>Taux d'ACC</th><th>Surplus an 1</th><th>Recettes producteur</th><th>Économies conso.</th><th>VAN producteur</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div></div>
+  <div class="mode-desc" id="compDesc"></div>
+
+  <div class="chart-card" style="margin-top:16px">
+    <div class="chart-head">
+      <h3>Production partagée ou perdue en surplus, selon la clé</h3>
+      <p>Année 1. Ce que la clé ne parvient pas à affecter part en surplus, valorisé à un tarif bien plus faible.</p>
+    </div>
+    <div class="chart-box"><canvas id="graphModes"></canvas></div>
+  </div>
+
+  <!-- ════════════════ GRAPHIQUES ════════════════ -->
+  <h2 class="section-title"><span class="num">06</span> Trésorerie cumulée</h2>
+  <div class="chart-card">
+    <div class="chart-head">
+      <h3>Producteur et consommateurs, cumul non actualisé</h3>
+      <p id="chartNote">La courbe producteur part de l'investissement net et franchit zéro au point de rentabilité.</p>
+    </div>
+    <div class="chart-box"><canvas id="graph"></canvas></div>
+  </div>
+
+  <h2 class="section-title"><span class="num">07</span> Répartition de l'énergie (année 1)</h2>
+  <div class="chart-card">
+    <div class="chart-head">
+      <h3>Énergie affectée par participant</h3>
+      <p>Comparaison entre la consommation annuelle et la part réellement couverte par l'ACC.</p>
+    </div>
+    <div class="chart-box"><canvas id="graphPart"></canvas></div>
+  </div>
+
+  <!-- ════════════════ TABLEAUX ════════════════ -->
+  <h2 class="section-title"><span class="num">08</span> Bilan par participant (année 1)</h2>
+  <div class="table-card"><div class="table-scroll">
+    <table id="tabPart">
+      <thead>
+        <tr><th>Participant</th><th>Conso.</th><th>Capacité</th><th>Énergie ACC</th><th>Part de la production</th><th>Couverture</th><th>Économie an 1</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div></div>
+
+  <h2 class="section-title"><span class="num">09</span> Détail année par année (producteur)</h2>
+  <div class="table-card"><div class="table-scroll">
+    <table id="tabAnnees">
+      <thead>
+        <tr><th>Année</th><th>Production</th><th>Énergie ACC</th><th>Surplus</th><th>Recettes</th><th>Flux net</th><th>Trésorerie cumulée</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div></div>
+
+  <!-- ════════════════ MÉTHODOLOGIE ════════════════ -->
+  <h2 class="section-title"><span class="num">10</span> Méthodologie</h2>
+  <details class="method" open>
+    <summary>Formules, règles applicables &amp; sources
+      <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </summary>
+    <div class="method-body">
+
+      <h4>Formules (pour chaque année t et chaque participant i)</h4>
+      <div class="formula">Production(t) = puissance × productible × (1 − dégradation)<sup>t−1</sup></div>
+      <div class="formula">Énergie ACC(i,t) = min( Production(t) × clé(i) × simultanéité(i) , consommation(i) )</div>
+      <div class="formula">Surplus collectif(t) = Production(t) − Σ Énergie ACC(i,t)</div>
+      <div class="formula">Prix réseau(t) = prix réseau × (1 + hausse réseau)<sup>t−1</sup></div>
+      <div class="formula">Prix ACC(t) = prix ACC × (1 + indexation ACC)<sup>t−1</sup></div>
+      <div class="formula">Recettes producteur(t) = Σ Énergie ACC × Prix ACC(t) + Surplus × prix surplus</div>
+      <div class="formula">Charges(t) = maintenance + frais PMO + composante gestion × (nb participants + 1)</div>
+      <div class="formula">Économie consommateur(i,t) = Énergie ACC(i,t) × [ Prix réseau(t) − Prix ACC(t) − acheminement ]</div>
+      <div class="formula">VAN = −Investissement net + Σ Flux net(t) / (1 + taux d'actualisation)<sup>t</sup></div>
+      <div class="formula">TRI = taux qui annule la VAN (résolution par bissection)</div>
+
+      <h4>Les trois modes d'affectation comparés</h4>
+      <div class="formula">Capacité d'absorption(i) = consommation(i) × simultanéité(i)</div>
+      <div class="formula">Clé statique      → Énergie(i) = min( Production × clé(i) , capacité(i) )   — le reliquat n'est pas réaffecté</div>
+      <div class="formula">Clé prorata       → clé(i) = consommation(i) / Σ consommations, puis même calcul</div>
+      <div class="formula">Ordre de priorité → cascade : chacun prend min( production restante , capacité(i) ) dans l'ordre du tableau</div>
+      <p class="src">L'écart entre ces modes ne vient pas de la production, identique dans les trois cas, mais de ce qui est <em>affecté</em>. Avec une clé statique mal ajustée, l'énergie attribuée à un participant qui ne peut pas l'absorber n'est pas redonnée aux autres : elle bascule en surplus collectif, valorisé bien en deçà du prix ACC. C'est précisément ce gaspillage que le principe de maximisation du décret n° 2026-561 vise à réduire.</p>
+      <p class="src">Contrepartie du mode priorité : la répartition devient inégale. Les derniers de l'ordre peuvent ne rien recevoir certaines périodes, ce qui pose une question d'équité que la PMO doit trancher — et qui relève de la gouvernance, pas du calcul.</p>
+      <p class="src">Limite du modèle : il raisonne en énergie annuelle. Au pas réel de 15 minutes, un mode dynamique ex-ante ne peut pas anticiper parfaitement les consommations, et les écarts affichés ici constituent donc une borne haute du gain attendu.</p>
+
+      <h4>Le paramètre décisif : la simultanéité</h4>
+      <p class="src">La répartition est calculée au pas de 15 minutes. Une clé n'a de valeur que si le consommateur consomme réellement au moment où l'électricité lui est affectée. Le coefficient de simultanéité désigne ici la <strong>part de la consommation annuelle qui a lieu pendant les heures de production</strong> ; multiplié par la consommation, il donne la capacité d'absorption annuelle. Sans courbes de charge réelles, il s'agit d'une hypothèse — c'est le paramètre le plus sensible du modèle, avant même le prix de vente.</p>
+
+      <h4>Règles applicables (sources)</h4>
+      <p class="src">Définition et périmètre : article L. 315-2 du code de l'énergie. Par défaut, les points de soutirage et d'injection des participants les plus éloignés doivent être distants de 2 km au maximum.</p>
+      <p class="src">Dérogations de périmètre : 10 km en communes rurales ou périurbaines, 20 km en communes rurales (grille communale de densité INSEE), 20 km si un participant est un service d'incendie et de secours, ou territoire d'un EPCI à fiscalité propre. Arrêté du 21 novembre 2019 modifié ; article 24 de la loi n° 2025-391 du 30 avril 2025.</p>
+      <p class="src">Puissance cumulée : inférieure à 5 MW pour une opération étendue, jusqu'à 10 MW pour certaines opérations à l'échelle d'un EPCI (source : photovoltaique.info).</p>
+      <p class="src">Répartition : décret n° 2026-561 du 26 juin 2026 (JO du 30 juin 2026), rectifié le 5 juillet 2026. Il affirme le principe d'affectation prioritaire aux consommateurs de l'opération dans la limite de leur consommation mesurée, définit la « part fixe » de production non affectée (nulle par défaut) et encadre le calendrier de transmission des coefficients. Une partie des dispositions s'applique depuis le 1er juillet 2026, le reste au 1er juillet 2027.</p>
+      <p class="src">Accise sur l'électricité : tarif particulier de 0 €/MWh depuis le 1er mars 2025 pour les kWh affectés, pour une installation de moins de 1 MWc (articles L. 312-87 et L. 312-79 du CIBS). Le rescrit fiscal de 2025 qui remettait ce taux en cause a été annulé par le Conseil d'État en mars 2026.</p>
+      <p class="src">TURPE : systématiquement prélevé sur tout kWh soutiré, y compris les kWh affectés en ACC, même s'ils sont cédés gratuitement. Une grille tarifaire spécifique existe sur option (article L. 315-3), réservée en TURPE 7 aux opérations dont tous les participants sont raccordés en aval du même poste HTA/BT. Une composante de gestion majorée s'applique à tous les participants (délibération CRE du 13 mars 2025).</p>
+
+      <h4>Valeurs pré-remplies</h4>
+      <p class="src">Prix réseau 0,1940 €/kWh TTC — tarif réglementé « Bleu » EDF, option Base, 3–6 kVA, en vigueur depuis le 1er février 2026 (grille EDF / délibération CRE).</p>
+      <p class="src">Productible 1 100 kWh/kWc/an — ordre de grandeur PVGIS pour la France métropolitaine, à ajuster selon localisation, orientation et inclinaison.</p>
+
+      <h4>Hypothèses à personnaliser (non sourcées, non garanties)</h4>
+      <p class="src">Prix de vente ACC, acheminement et taxes sur les kWh affectés, valorisation du surplus, coefficients de simultanéité, frais de PMO, composante de gestion majorée, coût d'investissement, indexations : ces valeurs dépendent de chaque opération, de chaque contrat et de la grille tarifaire applicable. Elles doivent être vérifiées auprès du gestionnaire de réseau, des fournisseurs et des textes en vigueur.</p>
+      <p class="src">Le modèle raisonne en énergie annuelle avec un coefficient de simultanéité, et non au pas de 15 minutes. Il ne remplace pas une étude sur courbes de charge réelles.</p>
+    </div>
+  </details>
+
+  <footer>
+    Cet outil fournit une estimation à titre indicatif et ne constitue ni un conseil financier, ni un conseil juridique, ni une garantie de résultat. Les valeurs par défaut sont éditables dans le code (objets <strong>PARAMS</strong> et <strong>PARTICIPANTS</strong>) et via les champs ci-dessus.
+  </footer>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   PARAMÈTRES PAR DÉFAUT — éditez ici pour changer les valeurs initiales
+   ════════════════════════════════════════════════════════════════ */
+const PARAMS = {
+  puissanceKwc:      24,       // kWc
+  productible:       1100,     // kWh/kWc/an
+  investissement:    27600,    // €
+  subvention:        9000,     // €
+  prixReseau:        0.1940,   // €/kWh TTC — prix évité (an 0)
+  prixACC:           0.1200,   // €/kWh — part fourniture vendue par la PMO
+  acheminement:      0.0540,   // €/kWh — TURPE + TVA restant dus sur kWh ACC
+  prixSurplus:       0.0400,   // €/kWh — valorisation du surplus collectif
+  fraisPMO:          900,      // €/an
+  compGestion:       30,       // €/an et par participant (producteur inclus)
+  maintenance:       500,      // €/an
+  inflationReseau:   3,        // %/an
+  indexACC:          2,        // %/an
+  degradation:       0.5,      // %/an
+  duree:             25,       // ans
+  tauxActualisation: 4         // %
+};
+
+/* Participants par défaut — nom, consommation (kWh/an), clé (%), simultanéité (%) */
+const PARTICIPANTS = [
+  {nom:'Mairie',            conso: 12000, cle: 20, simul: 70},
+  {nom:'École',             conso: 15000, cle: 20, simul: 70},
+  {nom:'Salle des fêtes',   conso:  6000, cle: 20, simul: 55},
+  {nom:'Foyer 1',           conso:  4500, cle: 20, simul: 35},
+  {nom:'Foyer 2',           conso:  4500, cle: 20, simul: 35}
+];
+
+/* Palette des séries */
+const PALETTE = ['#12C4EE', '#FAC800', '#4FD3F3', '#7A8CA3', '#0B7C9B', '#9BE4F7', '#C79F00'];
+
+/* ── Formatage français ─────────────────────────────────────────── */
+const nf0 = new Intl.NumberFormat('fr-FR', {maximumFractionDigits:0});
+const euro = n => nf0.format(Math.round(n)) + ' €';
+const kwhF = n => nf0.format(Math.round(n)) + ' kWh';
+const pctF = (n,d=1) => n.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}) + ' %';
+
+/* ── Thème commun pour Chart.js ─────────────────────────────────── */
+const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
+Chart.defaults.font.size = 12.5;
+Chart.defaults.color = css('--ink-soft');
+
+let chart, chartPart, chartModes;
+const $ = id => document.getElementById(id);
+
+/* ════════════════════════════════════════════════════════════════
+   MODES D'AFFECTATION DE L'ÉLECTRICITÉ
+   Définition des trois clés comparées. Éditez les libellés ici.
+   ════════════════════════════════════════════════════════════════ */
+const MODES = {
+  statique: {
+    nom: 'Clé statique',
+    desc: "Des coefficients fixes, identiques à chaque pas de mesure, saisis dans le tableau ci-dessus. "
+        + "C'est le mode le plus simple et le plus répandu. Sa limite : si un participant se voit affecter, "
+        + "à un instant donné, plus d'énergie qu'il n'en consomme, le surplus n'est <strong>pas réaffecté</strong> "
+        + "aux autres — il part en surplus collectif, valorisé bien moins cher."
+  },
+  prorata: {
+    nom: 'Clé au prorata des consommations',
+    desc: "Clé statique elle aussi, mais calculée automatiquement au prorata des consommations annuelles. "
+        + "Elle épouse mieux le poids réel de chaque participant qu'une répartition arbitraire, sans pour autant "
+        + "s'adapter aux variations instantanées. La colonne « Clé statique » du tableau est ignorée dans ce mode."
+  },
+  priorite: {
+    nom: 'Ordre de priorité (maximisation)',
+    desc: "La production est affectée séquentiellement, dans l'ordre du tableau, chaque participant prenant ce qu'il "
+        + "peut absorber avant de laisser la place au suivant. C'est la logique de <strong>maximisation de "
+        + "l'autoconsommation</strong> introduite par le décret n° 2026-561 du 26 juin 2026, dont l'entrée en vigueur "
+        + "est prévue au 1er juillet 2027. Elle réduit mécaniquement le surplus, mais rend la répartition inégale : "
+        + "les derniers de la liste peuvent ne rien recevoir."
+  }
+};
+let MODE_ACTIF = 'statique';
+
+/* ════════════════════════════════════════════════════════════════
+   TABLEAU DES PARTICIPANTS (éditable)
+   ════════════════════════════════════════════════════════════════ */
+let participants = PARTICIPANTS.map(p => ({...p}));
+
+/* Capacité d'absorption annuelle = consommation × simultanéité.
+   Plafond physique de ce qu'un participant peut recevoir, quelle que soit la clé. */
+const capacites = () => participants.map(p => (+p.conso || 0) * (+p.simul || 0) / 100);
+
+function dessinerParticipants(){
+  const caps = capacites();
+  $('partBody').innerHTML = participants.map((p,i) => `
+    <tr>
+      <td style="text-align:center;color:var(--ink-faint);font-weight:600">
+        ${i+1}
+        <button class="del" style="width:22px;height:22px;font-size:11px;margin-left:4px" onclick="deplacer(${i},-1)" title="Monter">▲</button>
+        <button class="del" style="width:22px;height:22px;font-size:11px" onclick="deplacer(${i},1)" title="Descendre">▼</button>
+      </td>
+      <td><input type="text"   value="${p.nom}"   oninput="majPart(${i},'nom',this.value)"></td>
+      <td><input type="number" value="${p.conso}" step="100" oninput="majPart(${i},'conso',this.value)"></td>
+      <td><input type="number" value="${p.cle}"   step="0.5" oninput="majPart(${i},'cle',this.value)"></td>
+      <td><input type="number" value="${p.simul}" step="5"   oninput="majPart(${i},'simul',this.value)"></td>
+      <td class="cap-cell">${kwhF(caps[i])}</td>
+      <td style="text-align:center"><button class="del" onclick="supprimerParticipant(${i})" title="Supprimer">×</button></td>
+    </tr>`).join('');
+  majTotaux();
+}
+
+function majTotaux(){
+  const caps = capacites();
+  const totC = participants.reduce((s,p)=>s+(+p.conso||0),0);
+  const totK = participants.reduce((s,p)=>s+(+p.cle||0),0);
+  const totCap = caps.reduce((a,b)=>a+b,0);
+  $('totConso').textContent = kwhF(totC);
+  $('totCle').textContent   = pctF(totK,1);
+  $('totCap').textContent   = kwhF(totCap);
+
+  const w = $('warnCle');
+  if (MODE_ACTIF === 'statique' && Math.abs(totK - 100) > 0.05){
+    w.className = 'warn show';
+    w.textContent = `La somme des clés statiques vaut ${pctF(totK,1)} au lieu de 100 %. `
+      + (totK > 100 ? 'Au-delà de 100 %, une même énergie serait affectée deux fois : les clés sont normalisées à 100 % dans le calcul.'
+                    : 'En deçà de 100 %, la production non affectée part en surplus collectif. Les clés sont utilisées telles quelles.');
+  } else {
+    w.className = 'warn';
+  }
+}
+
+function majPart(i, champ, val){
+  participants[i][champ] = (champ === 'nom') ? val : (+val || 0);
+  if (champ === 'conso' || champ === 'simul'){
+    const caps = capacites();
+    const cell = $('partBody').rows[i].cells[5];
+    if (cell) cell.textContent = kwhF(caps[i]);
+  }
+  majTotaux();
+  simuler();
+}
+
+function deplacer(i, sens){
+  const j = i + sens;
+  if (j < 0 || j >= participants.length) return;
+  [participants[i], participants[j]] = [participants[j], participants[i]];
+  dessinerParticipants(); simuler();
+}
+function ajouterParticipant(){
+  participants.push({nom:'Participant ' + (participants.length+1), conso:5000, cle:0, simul:50});
+  dessinerParticipants(); simuler();
+}
+function supprimerParticipant(i){
+  if (participants.length <= 1) return;
+  participants.splice(i,1); dessinerParticipants(); simuler();
+}
+function repartirEgal(){
+  const n = participants.length;
+  participants.forEach(p => p.cle = +(100/n).toFixed(2));
+  dessinerParticipants(); simuler();
+}
+function repartirProrata(){
+  const tot = participants.reduce((s,p)=>s+(+p.conso||0),0) || 1;
+  participants.forEach(p => p.cle = +((p.conso/tot)*100).toFixed(2));
+  dessinerParticipants(); simuler();
+}
+
+/* ── Sélecteur de mode ──────────────────────────────────────────── */
+function dessinerModes(){
+  $('modes').innerHTML = Object.keys(MODES).map(k =>
+    `<button class="mode-btn ${k===MODE_ACTIF?'on':''}" onclick="choisirMode('${k}')">${MODES[k].nom}</button>`
+  ).join('');
+  $('modeDesc').innerHTML = MODES[MODE_ACTIF].desc;
+}
+function choisirMode(k){
+  MODE_ACTIF = k; dessinerModes(); majTotaux(); simuler();
+}
+
+/* ── Lecture des champs globaux ─────────────────────────────────── */
+function lire(){
+  return {
+    puissanceKwc:      +$('puissanceKwc').value,
+    productible:       +$('productible').value,
+    investissement:    +$('investissement').value,
+    subvention:        +$('subvention').value,
+    prixReseau:        +$('prixReseau').value,
+    prixACC:           +$('prixACC').value,
+    acheminement:      +$('acheminement').value,
+    prixSurplus:       +$('prixSurplus').value,
+    fraisPMO:          +$('fraisPMO').value,
+    compGestion:       +$('compGestion').value,
+    maintenance:       +$('maintenance').value,
+    inflationReseau:   +$('inflationReseau').value / 100,
+    indexACC:          +$('indexACC').value / 100,
+    degradation:       +$('degradation').value / 100,
+    duree:             Math.max(1, Math.round(+$('duree').value)),
+    tauxActualisation: +$('tauxActualisation').value / 100
+  };
+}
+
+/* ── TRI par bissection ─────────────────────────────────────────── */
+function calcTRI(invest, flux){
+  const van = r => -invest + flux.reduce((s,f,i)=> s + f/Math.pow(1+r, i+1), 0);
+  let lo = -0.9, hi = 1.0;
+  if (van(lo) * van(hi) > 0) return null;
+  for (let k=0;k<200;k++){
+    const mid = (lo+hi)/2;
+    if (van(mid) > 0) lo = mid; else hi = mid;
+  }
+  return (lo+hi)/2;
+}
+
+/* ── Temps de retour par interpolation linéaire ─────────────────── */
+function tempsRetour(cumul){
+  for (let t=1;t<cumul.length;t++){
+    if (cumul[t] >= 0){
+      const prev = cumul[t-1];
+      const frac = prev < 0 ? prev / (prev - cumul[t]) : 0;
+      return (t-1) + frac;
+    }
+  }
+  return null;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AFFECTATION — cœur du modèle
+   Répartit une production annuelle entre les participants selon le mode.
+   Règle commune (art. D. 315-4) : l'énergie affectée à un participant
+   ne peut dépasser ce qu'il consomme — ici sa capacité d'absorption.
+   ════════════════════════════════════════════════════════════════ */
+function affecter(prod, mode){
+  const caps = capacites();
+  const n = participants.length;
+  const E = new Array(n).fill(0);
+
+  if (mode === 'priorite'){
+    // Cascade : chacun prend ce qu'il peut absorber, dans l'ordre du tableau.
+    let reste = prod;
+    for (let i=0; i<n && reste > 0; i++){
+      E[i] = Math.min(reste, caps[i]);
+      reste -= E[i];
+    }
+  } else {
+    // Clés statiques : l'énergie non absorbée n'est PAS réaffectée.
+    let cles;
+    if (mode === 'prorata'){
+      const tot = participants.reduce((s,p)=>s+(+p.conso||0),0) || 1;
+      cles = participants.map(p => (+p.conso||0)/tot);
+    } else {
+      const tot = participants.reduce((s,p)=>s+(+p.cle||0),0);
+      const f = tot > 100 ? 100/tot : 1;      // normalisation si la somme dépasse 100 %
+      cles = participants.map(p => (+p.cle||0)*f/100);
+    }
+    for (let i=0;i<n;i++) E[i] = Math.min(prod * cles[i], caps[i]);
+  }
+  return E;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIMULATION D'UN MODE sur toute la durée
+   ════════════════════════════════════════════════════════════════ */
+function simulerMode(p, mode){
+  const investNet = Math.max(0, p.investissement - p.subvention);
+  const flux = [], gains = [], rows = [];
+  let detailAn1 = [];
+
+  for (let t=1; t<=p.duree; t++){
+    const prod    = p.puissanceKwc * p.productible * Math.pow(1 - p.degradation, t-1);
+    const prixRes = p.prixReseau * Math.pow(1 + p.inflationReseau, t-1);
+    const prixAcc = p.prixACC    * Math.pow(1 + p.indexACC,       t-1);
+    const marge   = prixRes - prixAcc - p.acheminement;   // économie unitaire consommateur
+
+    const E          = affecter(prod, mode);
+    const energieACC = E.reduce((a,b)=>a+b, 0);
+    const gainConso  = energieACC * marge;
+    const surplus    = Math.max(0, prod - energieACC);
+    const recettes   = energieACC * prixAcc + surplus * p.prixSurplus;
+    const charges    = p.maintenance + p.fraisPMO + p.compGestion * (participants.length + 1);
+    const net        = recettes - charges;
+
+    flux.push(net);
+    gains.push(gainConso);
+    rows.push({t, prod, energieACC, surplus, recettes, net});
+
+    if (t === 1){
+      const caps = capacites();
+      detailAn1 = participants.map((part,i) => ({
+        nom: part.nom, conso: +part.conso || 0, cap: caps[i],
+        energie: E[i], part: prod > 0 ? E[i]/prod*100 : 0, gain: E[i]*marge
+      }));
+    }
+  }
+
+  const cumul = [-investNet];
+  flux.forEach(f => cumul.push(cumul[cumul.length-1] + f));
+  const cumulAct = [-investNet];
+  flux.forEach((f,i) => cumulAct.push(cumulAct[cumulAct.length-1] + f/Math.pow(1+p.tauxActualisation, i+1)));
+  const cumulConso = [0];
+  gains.forEach(g => cumulConso.push(cumulConso[cumulConso.length-1] + g));
+
+  return {
+    investNet, flux, gains, rows, detailAn1, cumul, cumulAct, cumulConso,
+    van: cumulAct[cumulAct.length-1],
+    tri: calcTRI(investNet, flux),
+    retourBrut: tempsRetour(cumul),
+    retourAct:  tempsRetour(cumulAct)
+  };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIMULATION PRINCIPALE + COMPARAISON DES MODES
+   ════════════════════════════════════════════════════════════════ */
+function simuler(){
+  const p = lire();
+  const r = simulerMode(p, MODE_ACTIF);
+  const comp = Object.fromEntries(Object.keys(MODES).map(k => [k, simulerMode(p, k)]));
+
+  const prodAn1  = r.rows[0].prod;
+  const accAn1   = r.rows[0].energieACC;
+  const consoTot = participants.reduce((s,x)=>s+(+x.conso||0),0);
+  const capTot   = capacites().reduce((a,b)=>a+b,0);
+  const tauxACC    = prodAn1  > 0 ? accAn1/prodAn1  * 100 : 0;
+  const couverture = consoTot > 0 ? accAn1/consoTot * 100 : 0;
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  const fmtAns = v => v === null ? 'Non atteint' : v.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' ans';
+  $('kpis').innerHTML = `
+    <div class="kpi"><div class="klabel">Production an 1</div><div class="kval">${kwhF(prodAn1)}</div><div class="ksub">capacité d'absorption : ${kwhF(capTot)}</div></div>
+    <div class="kpi"><div class="klabel">Taux d'ACC</div><div class="kval">${pctF(tauxACC,1)}</div><div class="ksub">${kwhF(r.rows[0].surplus)} en surplus</div></div>
+    <div class="kpi"><div class="klabel">Couverture des besoins</div><div class="kval">${pctF(couverture,1)}</div><div class="ksub">de ${kwhF(consoTot)} consommés</div></div>
+    <div class="kpi"><div class="klabel">VAN producteur</div><div class="kval ${r.van>=0?'pos':'neg'}">${euro(r.van)}</div><div class="ksub">sur ${p.duree} ans</div></div>
+    <div class="kpi"><div class="klabel">TRI producteur</div><div class="kval">${r.tri===null?'—':pctF(r.tri*100,1)}</div><div class="ksub">seuil : ${pctF(p.tauxActualisation*100,1)}</div></div>
+    <div class="kpi"><div class="klabel">Temps de retour</div><div class="kval">${fmtAns(r.retourBrut)}</div><div class="ksub">actualisé : ${fmtAns(r.retourAct)}</div></div>
+    <div class="kpi"><div class="klabel">Économie consommateurs</div><div class="kval ${r.gains[0]>=0?'pos':'neg'}">${euro(r.gains[0])}</div><div class="ksub">année 1, tous participants</div></div>
+    <div class="kpi"><div class="klabel">Gain cumulé consommateurs</div><div class="kval ${r.cumulConso[r.cumulConso.length-1]>=0?'pos':'neg'}">${euro(r.cumulConso[r.cumulConso.length-1])}</div><div class="ksub">sur ${p.duree} ans</div></div>
+  `;
+
+  // ── Tableau comparatif des modes ──────────────────────────────
+  $('tabModes').querySelector('tbody').innerHTML = Object.keys(MODES).map(k => {
+    const m = comp[k], r0 = m.rows[0];
+    const taux = r0.prod > 0 ? r0.energieACC/r0.prod*100 : 0;
+    return `<tr class="${k===MODE_ACTIF?'cross':''}">
+      <td>${MODES[k].nom}${k===MODE_ACTIF?' — actif':''}</td>
+      <td>${kwhF(r0.energieACC)}</td>
+      <td>${pctF(taux,1)}</td>
+      <td>${kwhF(r0.surplus)}</td>
+      <td>${euro(r0.recettes)}</td>
+      <td>${euro(m.gains[0])}</td>
+      <td>${euro(m.van)}</td>
+    </tr>`;
+  }).join('');
+
+  // Commentaire automatique : écart entre le mode actif et le meilleur
+  const best = Object.keys(MODES).reduce((a,b) => comp[b].rows[0].energieACC > comp[a].rows[0].energieACC ? b : a, 'statique');
+  const ecart = comp[best].rows[0].energieACC - accAn1;
+  const ecartVan = comp[best].van - r.van;
+  $('compDesc').innerHTML = ecart > 1
+    ? `Le mode <strong>${MODES[best].nom}</strong> affecte <strong>${kwhF(ecart)}</strong> de plus par an que le mode actif, `
+      + `soit <strong>${euro(ecartVan)}</strong> de VAN supplémentaire sur ${p.duree} ans. `
+      + `Cette énergie n'est pas perdue physiquement : elle part en surplus collectif, valorisée à ${p.prixSurplus.toLocaleString('fr-FR',{minimumFractionDigits:4})} €/kWh `
+      + `au lieu de ${p.prixACC.toLocaleString('fr-FR',{minimumFractionDigits:4})} €/kWh en ACC.`
+    : `Le mode actif exploite déjà toute la capacité d'absorption disponible : aucune clé ne ferait mieux avec ces paramètres. `
+      + `Le surplus restant (${kwhF(r.rows[0].surplus)}) vient d'un dimensionnement supérieur aux besoins simultanés, non de la clé.`;
+
+  // ── Tableau par participant ───────────────────────────────────
+  $('tabPart').querySelector('tbody').innerHTML = r.detailAn1.map(d => `
+    <tr>
+      <td>${d.nom}</td>
+      <td>${kwhF(d.conso)}</td>
+      <td>${kwhF(d.cap)}</td>
+      <td>${kwhF(d.energie)}</td>
+      <td>${pctF(d.part,1)}</td>
+      <td>${pctF(d.conso>0 ? d.energie/d.conso*100 : 0, 1)}</td>
+      <td>${euro(d.gain)}</td>
+    </tr>`).join('');
+
+  // ── Tableau année par année ───────────────────────────────────
+  const crossYear = r.retourBrut === null ? null : Math.ceil(r.retourBrut);
+  $('tabAnnees').querySelector('tbody').innerHTML = r.rows.map(row => `
+    <tr class="${row.t===crossYear?'cross':''}">
+      <td>${row.t}</td>
+      <td>${kwhF(row.prod)}</td>
+      <td>${kwhF(row.energieACC)}</td>
+      <td>${kwhF(row.surplus)}</td>
+      <td>${euro(row.recettes)}</td>
+      <td>${euro(row.net)}</td>
+      <td>${euro(r.cumul[row.t])}</td>
+    </tr>`).join('');
+
+  // ── Graphique 1 : trésorerie cumulée ──────────────────────────
+  const labels = r.cumul.map((_,i)=> i);
+  const ctx = $('graph').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,360);
+  grad.addColorStop(0, 'rgba(18,196,238,.26)');
+  grad.addColorStop(1, 'rgba(18,196,238,.02)');
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Producteur — trésorerie cumulée', data:r.cumul,
+         borderColor:css('--accent'), backgroundColor:grad, borderWidth:2.5, fill:true, tension:.25,
+         pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:css('--accent')},
+        {label:'Producteur — cumulé actualisé', data:r.cumulAct,
+         borderColor:css('--slate'), borderDash:[5,4], borderWidth:1.6, fill:false, tension:.25,
+         pointRadius:0, pointHoverRadius:4},
+        {label:'Consommateurs — économies cumulées', data:r.cumulConso,
+         borderColor:css('--good'), borderWidth:1.8, fill:false, tension:.25,
+         pointRadius:0, pointHoverRadius:4}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{labels:{boxWidth:12, boxHeight:12, usePointStyle:true, pointStyle:'circle'}},
+        tooltip:{backgroundColor:'#3F5570', padding:11, cornerRadius:8, titleFont:{family:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',weight:'700'},
+          callbacks:{title:items => 'Année ' + items[0].label, label:c => c.dataset.label + ' : ' + euro(c.parsed.y)}}
+      },
+      scales:{
+        x:{grid:{display:false}, title:{display:true, text:'Année', color:css('--ink-faint')}},
+        y:{grid:{color:'rgba(63,85,112,.10)'}, ticks:{callback:v => nf0.format(v) + ' €'}, border:{display:false}}
+      }
+    }
+  });
+
+  // ── Graphique 2 : comparaison des modes (barres empilées) ─────
+  const cles = Object.keys(MODES);
+  if (chartModes) chartModes.destroy();
+  chartModes = new Chart($('graphModes').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: cles.map(k => MODES[k].nom),
+      datasets:[
+        {label:'Énergie partagée en ACC', data: cles.map(k => Math.round(comp[k].rows[0].energieACC)), backgroundColor:css('--accent'), borderRadius:6},
+        {label:'Surplus collectif',       data: cles.map(k => Math.round(comp[k].rows[0].surplus)),    backgroundColor:'#DCEAF2',       borderRadius:6}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{labels:{boxWidth:12, boxHeight:12, usePointStyle:true, pointStyle:'circle'}},
+        tooltip:{backgroundColor:'#3F5570', padding:11, cornerRadius:8, titleFont:{family:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',weight:'700'},
+          callbacks:{label:c => c.dataset.label + ' : ' + kwhF(c.parsed.y)}}
+      },
+      scales:{
+        x:{stacked:true, grid:{display:false}},
+        y:{stacked:true, grid:{color:'rgba(63,85,112,.10)'}, ticks:{callback:v => nf0.format(v) + ' kWh'}, border:{display:false}}
+      }
+    }
+  });
+
+  // ── Graphique 3 : répartition par participant ─────────────────
+  if (chartPart) chartPart.destroy();
+  chartPart = new Chart($('graphPart').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: r.detailAn1.map(d => d.nom),
+      datasets:[
+        {label:'Consommation annuelle',   data: r.detailAn1.map(d => Math.round(d.conso)),   backgroundColor:'#DCEAF2', borderRadius:6},
+        {label:"Capacité d'absorption",   data: r.detailAn1.map(d => Math.round(d.cap)),     backgroundColor:'#FAC800', borderRadius:6},
+        {label:'Énergie ACC affectée',    data: r.detailAn1.map(d => Math.round(d.energie)), backgroundColor:css('--accent'), borderRadius:6}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{labels:{boxWidth:12, boxHeight:12, usePointStyle:true, pointStyle:'circle'}},
+        tooltip:{backgroundColor:'#3F5570', padding:11, cornerRadius:8, titleFont:{family:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',weight:'700'},
+          callbacks:{label:c => c.dataset.label + ' : ' + kwhF(c.parsed.y)}}
+      },
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(63,85,112,.10)'}, ticks:{callback:v => nf0.format(v) + ' kWh'}, border:{display:false}}
+      }
+    }
+  });
+}
+
+/* ── Recalcul automatique + lancement initial ───────────────────── */
+document.querySelectorAll('.card input').forEach(el => el.addEventListener('input', simuler));
+dessinerModes();
+dessinerParticipants();
+simuler();
+</script>
+</body>
+</html>

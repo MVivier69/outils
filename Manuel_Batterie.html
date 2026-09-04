@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12C4EE">
+<link rel="icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<link rel="apple-touch-icon" href="https://mvivier69.github.io/soleil-b/images/icone-192.png">
+<title>Manuel — Simulateur de rentabilité des batteries</title>
+<style>
+/* ════════════════════════════════════════════════════════════════
+   CHARTE GRAPHIQUE PARTAGÉE  (identique au simulateur Batteries)
+   Modifiez librement ces variables pour changer l'apparence.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  /* Palette reprise de l'application Soleil Beaujolais (soleil-b) */
+  --principale:#12C4EE;     /* cyan — couleur principale        */
+  --accent:#12C4EE;         /* alias : accent primaire = cyan   */
+  --accent-2:#FAC800;       /* jaune — accent secondaire        */
+  --encre:#3F5570;          /* bleu-ardoise — encre de l'app    */
+  --ink:#3F5570;            /* texte principal                  */
+  --ink-soft:#5F7691;       /* texte secondaire                 */
+  --ink-faint:#899BAD;      /* notes / unités                   */
+  --paper:#F2FAFD;          /* fond de l'app                    */
+  --paper-2:#E7F4FA;        /* fond alterné                     */
+  --card:#FFFFFF;           /* fond des cartes                  */
+  --line:rgba(63,85,112,.14);      /* trait de l'app            */
+  --line-strong:rgba(63,85,112,.26);
+  --accent-soft:#E3F7FD;    /* aplat cyan très clair            */
+  --accent-ink:#0B7C9B;     /* texte sur aplat cyan             */
+  --jaune-soft:#FFF6D9;     /* aplat jaune                      */
+  --jaune-ink:#8A6A00;      /* texte sur aplat jaune            */
+  --slate:#7A8CA3;          /* série secondaire (graphes)       */
+  --good:#0E9F6E;           /* valeur favorable                 */
+  --bad:#E02424;            /* valeur défavorable               */
+  --shadow:0 1px 2px rgba(63,85,112,.06), 0 6px 18px rgba(63,85,112,.08);
+  --shadow-fort:0 8px 26px rgba(63,85,112,.16);
+  --radius:14px;
+  --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:var(--paper);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow-wrap:break-word;
+  font-variant-numeric:tabular-nums;
+}
+img{display:block;max-width:100%}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 60px}
+
+/* ── Bandeau / masthead ─────────────────────────────────────────── */
+.masthead{padding:10px 0 18px;border-bottom:1px solid var(--line)}
+.kicker{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 13px;border-radius:999px;
+  background:var(--card);box-shadow:var(--shadow);
+  color:var(--principale);
+  font-size:.82rem;font-weight:700;
+}
+.badge svg{width:15px;height:15px}
+.eyebrow{
+  font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;
+}
+h1{
+  font-family:var(--font-display);
+  font-weight:700;font-size:clamp(1.5rem,4.5vw,2.1rem);
+  line-height:1.15;letter-spacing:-.015em;margin:0;
+}
+h1 em{font-style:normal;color:var(--principale)}
+.lead{margin:8px 0 0;max-width:62ch;color:var(--ink);opacity:.78;font-size:.95rem}
+
+/* ── Note encadrée (motif « à la une » de l'app) ────────────────── */
+.note{
+  display:flex;gap:12px;margin-top:16px;padding:13px 14px;
+  background:var(--card);border-radius:var(--radius);
+  border-left:5px solid var(--accent-2);
+  box-shadow:var(--shadow);font-size:.88rem;color:var(--ink);opacity:.95;
+}
+.note svg{flex:none;width:18px;height:18px;color:var(--principale);margin-top:2px}
+.note strong{font-weight:700}
+
+/* ── Titres de section (motif de l'app : capitales + filet) ─────── */
+.section-title{
+  display:flex;align-items:center;gap:10px;
+  margin:28px 2px 12px;
+  font-family:var(--font-display);
+  font-size:.76rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);opacity:.9;
+}
+.section-title::after{
+  content:"";flex:1 1 auto;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent-2),transparent);
+}
+.section-title .num{
+  font-size:.72rem;font-weight:700;color:var(--principale);letter-spacing:.08em;
+}
+
+/* ── Cartes de saisie ───────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.card{
+  background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:16px 16px 4px;
+}
+.card h3{
+  margin:0 0 2px;font-size:.7rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink);opacity:.6;
+}
+.field{padding:12px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{display:block;font-size:.92rem;font-weight:600;color:var(--ink)}
+.field .hint{font-size:.78rem;color:var(--ink);opacity:.6;margin:1px 0 8px}
+.inputline{display:flex;align-items:stretch;gap:0}
+.inputline input{
+  flex:1;min-width:0;font-family:var(--font-body);font-size:1rem;font-weight:700;
+  color:var(--ink);background:var(--paper);border:1px solid var(--line);
+  border-radius:10px 0 0 10px;padding:9px 12px;font-variant-numeric:tabular-nums;
+}
+.inputline.solo input{border-radius:10px}
+.inputline input:focus{outline:none;border-color:var(--principale);box-shadow:0 0 0 3px var(--accent-soft)}
+.unit{
+  display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:600;
+  color:var(--ink);opacity:.65;background:var(--paper-2);
+  border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;white-space:nowrap;
+}
+
+/* ── Boutons (pilules de l'app) ─────────────────────────────────── */
+.actions{margin:18px 0 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+button.run{
+  appearance:none;border:0;cursor:pointer;font:inherit;
+  font-size:.9rem;font-weight:700;color:#fff;
+  background:var(--principale);border-radius:999px;padding:11px 22px;
+  box-shadow:var(--shadow);transition:transform .15s ease, filter .15s ease;
+}
+button.run:hover{filter:brightness(1.06);transform:translateY(-2px)}
+button.run:active{transform:translateY(0)}
+.live{font-size:.8rem;color:var(--ink);opacity:.6}
+
+/* ── KPIs ───────────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px}
+.kpi{
+  position:relative;background:var(--card);border-radius:var(--radius);
+  padding:14px 15px 13px;overflow:hidden;box-shadow:var(--shadow);
+  transition:transform .15s ease;
+}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--principale)}
+.kpi .klabel{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--ink);opacity:.6;text-transform:uppercase}
+.kpi .kval{font-family:var(--font-display);font-weight:700;font-size:1.65rem;letter-spacing:-.02em;margin:5px 0 2px;line-height:1.1}
+.kpi .ksub{font-size:.78rem;color:var(--ink);opacity:.7}
+.kpi .kval.pos{color:var(--good)} .kpi .kval.neg{color:var(--bad)}
+
+/* ── Graphique ──────────────────────────────────────────────────── */
+.chart-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chart-head h3{font-family:var(--font-display);font-weight:700;font-size:1rem;margin:0}
+.chart-head p{margin:0;font-size:.78rem;color:var(--ink);opacity:.6}
+.chart-box{position:relative;height:340px}
+
+/* ── Tableau ────────────────────────────────────────────────────── */
+.table-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:560px}
+th,td{padding:10px 14px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);opacity:.6;background:var(--paper-2);border-bottom:1px solid var(--line);
+}
+tbody td{border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even){background:var(--paper)}
+tbody tr.cross{background:var(--accent-soft)}
+tbody tr.cross td{font-weight:700;color:var(--accent-ink)}
+
+/* ── Méthodologie (accordéon) ───────────────────────────────────── */
+details.method{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+details.method>summary{
+  list-style:none;cursor:pointer;padding:14px 16px;font-family:var(--font-display);
+  font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:space-between;
+}
+details.method>summary::-webkit-details-marker{display:none}
+details.method>summary .chev{transition:transform .2s ease;color:var(--principale)}
+details.method[open]>summary .chev{transform:rotate(90deg)}
+.method-body{padding:2px 16px 18px;border-top:1px solid var(--line)}
+.method-body h4{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);opacity:.6;margin:16px 0 6px}
+.formula{
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:.8rem;
+  background:var(--paper);border-radius:10px;
+  padding:8px 12px;margin:6px 0;color:var(--ink);
+}
+.src{font-size:.85rem;color:var(--ink);opacity:.85;margin:6px 0;padding-left:16px;position:relative}
+.src::before{
+  content:"";position:absolute;left:0;top:.55em;
+  width:7px;height:7px;border-radius:50%;background:var(--principale);
+}
+
+/* ── Pied de page ───────────────────────────────────────────────── */
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--ink);opacity:.6;text-align:center}
+
+/* ── Interactions et accessibilité (repris de l'app) ────────────── */
+@media (hover:hover){
+  .kpi:hover,.card:hover{transform:translateY(-2px)}
+  .card{transition:transform .15s ease}
+}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
+  outline:3px solid var(--accent-2);outline-offset:2px;border-radius:6px;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+@media (max-width:359px){.wrap{padding:0 9px 60px}}
+
+/* ── Bannière et identité (motif de l'application soleil-b) ─────── */
+.banniere{
+  display:block;margin:0 -16px;overflow:hidden;background:var(--principale);
+}
+.banniere img{width:100%;height:var(--hauteur-banniere,130px);object-fit:cover}
+.identite{display:flex;align-items:center;gap:12px;padding:14px 2px 2px}
+.identite img{width:46px;height:46px;border-radius:50%;flex:0 0 auto}
+.identite .textes{min-width:0}
+.identite .nom{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.identite .bl{margin:2px 0 0;font-size:.82rem;opacity:.72}
+@media (max-width:359px){.banniere{margin:0 -9px}}
+
+/* ════════════════════════════════════════════════════════════════
+   AJOUTS SPÉCIFIQUES AU MANUEL
+   ════════════════════════════════════════════════════════════════ */
+.toc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px;box-shadow:var(--shadow)}
+.toc h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px}
+.toc li{margin:4px 0;font-size:14px;break-inside:avoid}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+.toc a:hover{color:var(--accent);border-color:var(--accent)}
+.prose{max-width:70ch}
+.prose p{margin:0 0 12px;color:var(--ink-soft);font-size:15px}
+.prose ol,.prose ul{margin:0 0 12px;padding-left:22px;color:var(--ink-soft);font-size:15px}
+.prose li{margin:5px 0}
+.prose strong{color:var(--ink)}
+.param{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px 22px;margin:14px 0;scroll-margin-top:20px;
+}
+.param:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft), var(--shadow)}
+.param-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.param-head h4{font-family:var(--font-display);font-weight:500;font-size:19px;margin:0;letter-spacing:-.01em}
+.chip{
+  font-size:11.5px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px;
+  background:var(--paper-2);color:var(--ink-faint);border:1px solid var(--line-strong);white-space:nowrap;
+}
+.chip.src{background:#E3F7FD;color:var(--accent-ink);border-color:rgba(18,196,238,.28)}
+.chip.hyp{background:var(--jaune-soft);color:var(--jaune-ink);border-color:rgba(250,200,0,.45)}
+.jump{
+  margin-left:auto;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;
+  border-bottom:1px solid transparent;white-space:nowrap;
+}
+.jump:hover{border-color:var(--accent)}
+.param dl{margin:10px 0 0;display:grid;grid-template-columns:150px 1fr;gap:8px 18px}
+.param dt{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
+.param dd{margin:0;font-size:14.5px;color:var(--ink-soft)}
+.param dd strong{color:var(--ink)}
+@media(max-width:620px){
+  .param dl{grid-template-columns:1fr;gap:2px 0}
+  .param dt{margin-top:10px}
+  .toc ol{columns:1}
+  .jump{margin-left:0;width:100%}
+}
+.backlink{
+  display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:10px 16px;
+  background:var(--ink);color:#fff;border-radius:11px;text-decoration:none;font-size:14px;font-weight:600;
+}
+.backlink:hover{background:#000}
+.callout{
+  background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:12px;padding:14px 18px;margin:14px 0;font-size:14px;color:var(--ink-soft);box-shadow:var(--shadow);
+}
+.callout strong{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Bannière et identité — images du dépôt soleil-b.
+       Pour utiliser d'autres visuels, remplacez simplement les deux URL ci-dessous. -->
+  <a class="banniere" href="https://mvivier69.github.io/soleil-b/" target="_blank" rel="noopener">
+    <img src="https://mvivier69.github.io/soleil-b/images/banniere.jpg" alt="">
+  </a>
+  <div class="identite">
+    <img src="https://mvivier69.github.io/soleil-b/images/logo.png" alt="Logo Soleil Beaujolais">
+    <div class="textes">
+      <p class="nom">Soleil Beaujolais</p>
+      <p class="bl">Énergie citoyenne en Beaujolais</p>
+    </div>
+  </div>
+
+
+  <header class="masthead">
+    <div class="kicker">
+      <span class="eyebrow">Manuel d'utilisation</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 10v4M6 10v4M10 9v6"/></svg> Stockage / Batteries</span>
+    </div>
+    <h1>Manuel du simulateur <em>batteries</em></h1>
+    <p class="lead">Mode d'emploi complet du comparateur de capacités de stockage : chaque paramètre, son réglage, son effet, et les limites à connaître avant de conclure.</p>
+    <a class="backlink" href="Index_Batterie.html">← Ouvrir le simulateur</a>
+  </header>
+
+  <h2 class="section-title"><span class="num">—</span> Sommaire</h2>
+  <div class="toc">
+    <h3>Dans ce manuel</h3>
+    <ol><li><a href="#s-principe">À quoi sert ce simulateur</a></li>
+<li><a href="#s-prise">Prise en main en 4 étapes</a></li>
+<li><a href="#s-params">Les paramètres, un par un</a></li>
+<li><a href="#s-resultats">Lire les résultats</a></li>
+<li><a href="#s-formules">Formules et paliers</a></li>
+<li><a href="#s-limites">Limites et pièges</a></li>
+<li><a href="#s-code">Personnaliser le fichier</a></li></ol>
+  </div>
+
+<h2 class="section-title" id="s-principe"><span class="num">01</span> À quoi sert ce simulateur</h2>
+<div class="prose">
+<p>Ce simulateur compare cinq capacités de batterie pour répondre à une question précise :
+<strong>faut-il stocker son surplus solaire plutôt que de le revendre ?</strong></p>
+<p>Le mécanisme est un arbitrage de prix. Aujourd'hui, votre surplus part au réseau et vous est racheté à un tarif bas.
+Le soir venu, vous rachetez de l'électricité à un tarif plus élevé. La batterie capture cet écart : chaque kilowattheure
+stocké puis consommé vous rapporte <strong>prix d'achat moins prix de revente</strong>.</p>
+<div class="callout"><strong>Conséquence à retenir.</strong> Ce n'est pas le prix de l'électricité qui fait la rentabilité
+d'une batterie, mais <strong>l'écart</strong> entre achat et revente. Un tarif de rachat généreux rend la batterie moins
+intéressante ; un surplus cédé gratuitement la rend beaucoup plus attractive.</div>
+<p>Le simulateur compare automatiquement 5, 10, 13,5, 15 et 20 kWh, et met en avant la capacité dont la valeur actuelle
+nette est la plus élevée.</p>
+</div>
+
+<h2 class="section-title" id="s-prise"><span class="num">02</span> Prise en main en 4 étapes</h2>
+<div class="prose">
+<ol>
+<li><strong>Saisissez votre injection réseau réelle.</strong> C'est le seul paramètre énergétique qui pilote le calcul :
+relevez l'index d'injection de votre compteur ou votre facture de revente.</li>
+<li><strong>Renseignez vos deux prix</strong> — achat et revente — d'après votre facture et votre contrat d'achat.</li>
+<li><strong>Calez le coût sur un devis réel</strong>, ramené à la référence de 13,5 kWh.</li>
+<li><strong>Corrigez la durée de vie et la dégradation.</strong> Les valeurs par défaut (20 ans, 1 %/an) sont favorables ;
+refaites le calcul avec 12 ans et 3 %/an pour obtenir une lecture prudente. L'écart entre les deux scénarios est
+souvent plus instructif que le résultat lui-même.</li>
+</ol>
+<p>Le calcul se relance automatiquement à chaque modification.</p>
+</div>
+
+<h2 class="section-title" id="s-params"><span class="num">03</span> Les paramètres, un par un</h2>
+<div class="prose">
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Installation et énergie</h3>
+<div class="param" id="p-prod">
+  <div class="param-head">
+    <h4>Production PV</h4>
+    <span class="chip">kWh/an</span>
+    <span class="chip">défaut&nbsp;: 10 000</span>
+    <span class="chip hyp">Contexte — non calculé</span>
+    <a class="jump" href="Index_Batterie.html#prod">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La production photovoltaïque annuelle du site. Ce champ sert de <strong>repère de cohérence</strong> pour vous aider à situer l'injection réseau.</dd>
+    <dt>Comment le régler</dt><dd>Reprenez la production réelle relevée sur votre onduleur, ou l'estimation puissance × productible.</dd>
+    <dt>Effet sur le résultat</dt><dd><strong>Aucun.</strong> Ce champ n'intervient pas dans les calculs actuels : seule l'injection réseau pilote le résultat. Il est là pour la lisibilité du contexte. Voir la section « Limites » à ce sujet.</dd>
+  </dl>
+</div>
+<div class="param" id="p-cons">
+  <div class="param-head">
+    <h4>Consommation</h4>
+    <span class="chip">kWh/an</span>
+    <span class="chip">défaut&nbsp;: 10 000</span>
+    <span class="chip hyp">Contexte — non calculé</span>
+    <a class="jump" href="Index_Batterie.html#cons">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La consommation électrique annuelle du foyer, également fournie à titre de repère.</dd>
+    <dt>Comment le régler</dt><dd>Relevé sur la facture annuelle ou l'espace client du fournisseur.</dd>
+    <dt>Effet sur le résultat</dt><dd><strong>Aucun</strong> sur le calcul, pour la même raison que le champ précédent.</dd>
+  </dl>
+</div>
+<div class="param" id="p-inj">
+  <div class="param-head">
+    <h4>Injection réseau</h4>
+    <span class="chip">kWh/an</span>
+    <span class="chip">défaut&nbsp;: 5 000</span>
+    <span class="chip hyp">Hypothèse projet</span>
+    <a class="jump" href="Index_Batterie.html#inj">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le surplus actuellement injecté sur le réseau, c'est-à-dire l'énergie produite mais non consommée sur place. C'est le <strong>gisement stockable</strong> : une batterie ne peut valoriser que ce qui partait au réseau.</dd>
+    <dt>Comment le régler</dt><dd>Relevé sur votre compteur (index d'injection) ou sur votre facture de revente. À défaut : production annuelle × (1 − taux d'autoconsommation).</dd>
+    <dt>Effet sur le résultat</dt><dd><strong>Paramètre pilote du modèle.</strong> Il plafonne l'énergie valorisable de chaque capacité : si l'injection est faible, même une grosse batterie ne trouvera rien à stocker et toutes les capacités convergeront vers le même résultat.</dd>
+  </dl>
+</div>
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Tarifs et hypothèses économiques</h3>
+<div class="param" id="p-achat">
+  <div class="param-head">
+    <h4>Prix d'achat</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,2000</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#achat">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le prix payé pour l'électricité soutirée au réseau — celui que la batterie permet d'éviter.</dd>
+    <dt>Comment le régler</dt><dd>Part variable TTC de votre facture, hors abonnement. Pour aligner ce simulateur sur le simulateur photovoltaïque, saisissez 0,1940 (tarif réglementé « Bleu », option Base, 3–6 kVA, depuis le 1<sup>er</sup> février 2026).</dd>
+    <dt>Effet sur le résultat</dt><dd>Moitié de l'équation du gain. Chaque kWh stocké rapporte exactement <strong>prix d'achat − prix de revente</strong>.</dd>
+  </dl>
+</div>
+<div class="param" id="p-vente">
+  <div class="param-head">
+    <h4>Prix de revente</h4>
+    <span class="chip">€/kWh</span>
+    <span class="chip">défaut&nbsp;: 0,1000</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#vente">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le tarif auquel votre surplus est actuellement racheté. C'est un <strong>manque à gagner</strong> : en stockant, vous renoncez à cette recette.</dd>
+    <dt>Comment le régler</dt><dd>Reprenez votre contrat d'achat en vigueur. Si votre surplus est cédé gratuitement, saisissez 0 — le gain par kWh devient alors maximal.</dd>
+    <dt>Effet sur le résultat</dt><dd>Se soustrait du gain unitaire. Un tarif de rachat élevé rend la batterie <strong>moins</strong> intéressante, ce qui est contre-intuitif mais logique : l'écart à capturer se réduit.</dd>
+  </dl>
+</div>
+<div class="param" id="p-hausse">
+  <div class="param-head">
+    <h4>Hausse annuelle du prix élec.</h4>
+    <span class="chip">%/an</span>
+    <span class="chip">défaut&nbsp;: 3</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#hausse">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'indexation composée appliquée chaque année au prix d'achat.</dd>
+    <dt>Comment le régler</dt><dd>Hypothèse, pas prévision. Testez 0 %, 2 % et 5 % pour encadrer le résultat.</dd>
+    <dt>Effet sur le résultat</dt><dd>Le prix de revente restant fixe dans ce modèle, la hausse <strong>élargit l'écart</strong> capturé année après année, donc améliore progressivement le gain annuel.</dd>
+  </dl>
+</div>
+<div class="param" id="p-tauxActu">
+  <div class="param-head">
+    <h4>Taux d'actualisation</h4>
+    <span class="chip">%</span>
+    <span class="chip">défaut&nbsp;: 4</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#tauxActu">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le taux qui ramène les gains futurs à leur valeur d'aujourd'hui, pour le calcul de la VAN.</dd>
+    <dt>Comment le régler</dt><dd>Coût de votre financement, ou rendement d'un placement sans risque. 2 à 4 % pour un ménage.</dd>
+    <dt>Effet sur le résultat</dt><dd>Un taux élevé pénalise les gains lointains et réduit la VAN de toutes les capacités, sans changer le classement de façon spectaculaire.</dd>
+  </dl>
+</div>
+<h3 class="section-title" style="font-size:18px;margin:32px 0 8px"><span class="num">›</span> Batterie</h3>
+<div class="param" id="p-cout">
+  <div class="param-head">
+    <h4>Coût batterie (référence 13,5 kWh)</h4>
+    <span class="chip">€</span>
+    <span class="chip">défaut&nbsp;: 5 000</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#cout">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>Le coût installé d'une batterie de 13,5 kWh, qui sert de <strong>référence</strong>. Le coût des autres capacités est déduit au prorata : une batterie de 20 kWh coûte 20/13,5 fois ce montant.</dd>
+    <dt>Comment le régler</dt><dd>Reprenez un devis pour la capacité qui vous intéresse, puis ramenez-le à 13,5 kWh. Exemple : 4 000 € pour 10 kWh donnent 4 000 × 13,5/10 = 5 400 € à saisir.</dd>
+    <dt>Effet sur le résultat</dt><dd>Détermine l'investissement de chaque ligne du comparatif. Le prorata étant linéaire, il ne reproduit pas les économies d'échelle réelles — voir « Limites ».</dd>
+  </dl>
+</div>
+<div class="param" id="p-duree">
+  <div class="param-head">
+    <h4>Durée de vie / d'analyse</h4>
+    <span class="chip">ans</span>
+    <span class="chip">défaut&nbsp;: 20</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#duree">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>L'horizon du calcul, ici assimilé à la durée de vie de la batterie.</dd>
+    <dt>Comment le régler</dt><dd>Les garanties constructeur usuelles portent sur 10 ans ou un nombre de cycles. Retenir 20 ans est <strong>optimiste</strong> pour une batterie lithium résidentielle : 10 à 15 ans constituent une hypothèse plus prudente.</dd>
+    <dt>Effet sur le résultat</dt><dd>Très structurant. Passer de 20 à 12 ans ampute fortement le gain cumulé et repousse, voire annule, le retour sur investissement.</dd>
+  </dl>
+</div>
+<div class="param" id="p-degBat">
+  <div class="param-head">
+    <h4>Dégradation batterie</h4>
+    <span class="chip">%/an</span>
+    <span class="chip">défaut&nbsp;: 1</span>
+    <span class="chip hyp">Hypothèse</span>
+    <a class="jump" href="Index_Batterie.html#degBat">Ouvrir dans le simulateur ↗</a>
+  </div>
+  <dl>
+    <dt>Ce que c'est</dt><dd>La perte de capacité utile annuelle, appliquée de façon composée à l'énergie valorisée.</dd>
+    <dt>Comment le régler</dt><dd>Les fiches techniques annoncent souvent 60 à 80 % de capacité résiduelle après 10 ans, soit environ 2 à 4 %/an au début. La valeur par défaut de 1 %/an est plutôt favorable.</dd>
+    <dt>Effet sur le résultat</dt><dd>À 1 %/an, l'énergie valorisée en année 20 vaut 83 % de celle de l'année 1. À 3 %/an, elle tombe à 56 % : l'effet devient déterminant.</dd>
+  </dl>
+</div></div>
+
+<h2 class="section-title" id="s-resultats"><span class="num">04</span> Lire les résultats</h2>
+<div class="prose">
+<p>Les quatre indicateurs de synthèse portent sur la <strong>capacité conseillée</strong>, c'est-à-dire celle dont la VAN
+est la plus élevée — et non celle qui stocke le plus.</p>
+<ul>
+<li><strong>Capacité conseillée</strong> — le meilleur compromis entre énergie captée et investissement.</li>
+<li><strong>VAN</strong> — valeur créée, actualisée, nette du coût de la batterie. Négative, la batterie coûte plus
+qu'elle ne rapporte.</li>
+<li><strong>Retour sur investissement</strong> — première année où le gain cumulé dépasse le coût de la batterie.
+Affiche « Non atteint » lorsque cela ne survient jamais dans la durée retenue, ce qui est fréquent et constitue en soi
+une réponse.</li>
+<li><strong>Énergie valorisée an 1</strong> — les kilowattheures réellement détournés du réseau la première année.</li>
+</ul>
+<p>Le <strong>tableau comparatif</strong> donne les six indicateurs pour chacune des cinq capacités ; la ligne surlignée
+est la capacité conseillée. Le <strong>graphique</strong> superpose les courbes de gain cumulé, la capacité de référence
+13,5 kWh étant tracée plus épaisse. Attention : ces courbes représentent les <strong>économies cumulées hors coût
+d'achat</strong> — le retour sur investissement se lit dans le tableau, pas sur le graphique.</p>
+</div>
+
+<h2 class="section-title" id="s-formules"><span class="num">05</span> Formules et paliers</h2>
+<div class="prose">
+<p>Pour chaque capacité et chaque année t :</p>
+<div class="formula">kWh valorisés = min( injection réseau , plafond du palier de capacité )</div>
+<div class="formula">Énergie(t) = kWh valorisés × (1 − dégradation)<sup>t−1</sup></div>
+<div class="formula">Prix achat(t) = prix achat × (1 + hausse)<sup>t−1</sup></div>
+<div class="formula">Gain(t) = Énergie(t) × ( Prix achat(t) − prix de revente )</div>
+<div class="formula">VAN = −Coût batterie + Σ Gain(t) / (1 + taux d'actualisation)<sup>t</sup></div>
+<div class="formula">ROI = première année où Σ Gain ≥ coût de la batterie</div>
+<p>Les <strong>paliers de valorisation</strong> plafonnent l'énergie qu'une capacité donnée peut absorber dans l'année,
+indépendamment de l'injection disponible :</p>
+<div class="formula">jusqu'à 5 kWh → 1 500 kWh/an   ·   10 kWh → 2 500   ·   13,5 kWh → 3 200   ·   15 kWh → 3 500   ·   au-delà → 4 500</div>
+<p>Ces paliers traduisent le fait qu'une batterie ne réalise qu'un cycle utile par jour environ, et qu'elle ne peut pas
+absorber tout le surplus d'une journée d'été. Ils proviennent du fichier d'origine et constituent des
+<strong>hypothèses à valider</strong> : ils sont modifiables dans l'objet <code>PALIERS</code>.</p>
+</div>
+
+<h2 class="section-title" id="s-limites"><span class="num">06</span> Limites et pièges</h2>
+<div class="prose">
+<ul>
+<li><strong>Les champs « Production PV » et « Consommation » ne sont pas utilisés dans le calcul.</strong> Ils servent
+uniquement de repère de saisie ; seule l'injection réseau pilote le résultat. C'est un héritage du fichier d'origine
+qu'il faudrait soit câbler, soit assumer explicitement.</li>
+<li><strong>Le coût au prorata est linéaire.</strong> Dans la réalité, le coût au kWh décroît avec la capacité et une part
+du prix est fixe (onduleur hybride, pose, pilotage). Le comparatif défavorise donc légèrement les grandes capacités.</li>
+<li><strong>Aucun rendement de charge / décharge.</strong> Une batterie lithium restitue environ 85 à 92 % de l'énergie
+stockée. Le modèle suppose 100 %, ce qui <strong>surestime le gain d'environ 10 %</strong>.</li>
+<li><strong>Aucun remplacement de batterie</strong> ni coût de fin de vie sur la durée retenue.</li>
+<li><strong>Le prix de revente n'est pas indexé</strong>, alors que le prix d'achat l'est. C'est une hypothèse
+implicitement favorable à la batterie.</li>
+<li><strong>Raisonnement annuel</strong>, sans courbe de charge : les paliers remplacent une simulation au pas horaire.</li>
+<li><strong>Aucun autre revenu</strong> : ni effacement, ni participation à un mécanisme de flexibilité, ni secours en
+cas de coupure — un service qui a de la valeur mais qui ne se chiffre pas ici.</li>
+</ul>
+</div>
+
+<h2 class="section-title" id="s-code"><span class="num">07</span> Personnaliser le fichier</h2>
+<div class="prose">
+<p>Trois objets en tête du script concentrent la personnalisation.</p>
+<ul>
+<li><strong><code>PARAMS</code></strong> — les valeurs par défaut. Comme dans les autres simulateurs, les attributs
+<code>value</code> des champs HTML font foi à l'affichage : modifiez les deux.</li>
+<li><strong><code>CAPACITES</code></strong> — la liste des capacités comparées, en kWh. Ajoutez ou retirez librement
+des valeurs ; le tableau et le graphique s'adaptent. Pensez à ajuster <code>CAP_REF</code> si vous changez la capacité
+de référence servant au prorata du coût.</li>
+<li><strong><code>PALIERS</code></strong> — les plafonds d'énergie valorisable. C'est ici que se joue le réalisme du
+modèle : si vous disposez d'une simulation horaire ou de données de terrain, remplacez ces valeurs par les vôtres.</li>
+</ul>
+<p><strong>Pour câbler les champs inutilisés</strong> : dans la fonction <code>lire()</code>, ajoutez la lecture de
+<code>prod</code> et <code>cons</code>, puis remplacez l'appel <code>potentiel(cap, p.inj)</code> par une logique
+utilisant ces valeurs — par exemple en bornant l'énergie valorisable par la consommation hors production.</p>
+<p>Les couleurs et les polices se règlent dans le bloc <code>:root</code>, identique aux deux autres simulateurs.</p>
+</div>
+
+  <footer>
+    Manuel du simulateur <strong>Stockage / Batteries</strong>. Les liens « Ouvrir dans le simulateur » supposent que le manuel et
+    le fichier <strong>Index_Batterie.html</strong> se trouvent dans le même dossier.
+    Ce document décrit un outil d'estimation ; il ne constitue ni un conseil financier, ni un conseil juridique.
+  </footer>
+
+</div>
+</body>
+</html>
