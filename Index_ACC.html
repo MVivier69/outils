@@ -234,6 +234,109 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
 .identite .nom{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
 .identite .bl{margin:2px 0 0;font-size:.82rem;opacity:.72}
 @media (max-width:359px){.banniere{margin:0 -9px}}
+/* ════════════════════════════════════════════════════════════════
+   RAPPORT IMPRIMABLE — charte du modèle Word « Watts News »
+   Titres #0F4761, corps Arial, encadrés bordés.
+   Masqué à l'écran, révélé à l'impression.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  --wn-encre:#0F4761;      /* bleu-pétrole des titres Watts News */
+  --wn-texte:#000000;
+  --wn-fond:#DEEBF7;       /* trame claire des encadrés          */
+  --wn-gris:#595959;
+  --wn-police:Arial, Helvetica, sans-serif;
+}
+#rapport{display:none}
+
+#rapport .wn-tete{
+  display:flex;align-items:center;gap:14px;
+  border-bottom:2.5pt solid var(--wn-encre);padding-bottom:6pt;margin-bottom:14pt;
+}
+#rapport .wn-tete img{width:46pt;height:46pt;flex:0 0 auto}
+#rapport .wn-tete .wn-titre{font-size:17pt;font-weight:700;font-style:italic;color:var(--wn-encre);line-height:1.1}
+#rapport .wn-tete .wn-slogan{margin-left:auto;font-size:11.5pt;font-weight:700;font-style:italic;color:var(--wn-encre);text-align:right}
+
+#rapport .wn-cartouche{
+  border:1.5pt solid var(--wn-encre);background:var(--wn-fond);
+  padding:8pt 12pt;text-align:center;margin:0 0 14pt;
+  box-shadow:3pt 3pt 0 rgba(15,71,97,.25);
+}
+#rapport .wn-cartouche h1{font-size:13pt;font-weight:700;margin:0;color:var(--wn-texte);letter-spacing:0}
+#rapport .wn-cartouche .sous{font-size:10.5pt;font-weight:700;margin-top:3pt;color:var(--wn-texte)}
+#rapport .wn-cartouche .meta{font-size:9pt;font-weight:400;margin-top:5pt;color:var(--wn-gris)}
+
+#rapport h2{
+  font-family:var(--wn-police);font-size:11pt;font-weight:700;color:var(--wn-encre);
+  margin:14pt 0 5pt;padding:0;text-transform:none;letter-spacing:0;
+}
+#rapport h3{font-family:var(--wn-police);font-size:10pt;font-weight:700;color:var(--wn-encre);margin:10pt 0 4pt}
+#rapport p, #rapport li{font-size:10pt;line-height:1.4;text-align:justify;margin:0 0 6pt;color:var(--wn-texte)}
+#rapport ul{margin:0 0 8pt;padding-left:16pt}
+
+#rapport .wn-resume{
+  border:2pt solid var(--wn-encre);padding:9pt 12pt;margin:10pt 0 14pt;
+}
+#rapport .wn-resume .wn-resume-titre{
+  font-size:11pt;font-weight:700;text-align:center;color:var(--wn-texte);
+  margin:0 0 7pt;padding-bottom:4pt;border-bottom:1pt solid var(--wn-encre);
+}
+#rapport .wn-resume p{color:var(--wn-encre)}
+
+#rapport table{
+  width:100%;border-collapse:collapse;font-size:9pt;margin:4pt 0 10pt;min-width:0;
+  page-break-inside:auto;
+}
+#rapport th, #rapport td{
+  border:.5pt solid #9DB8C9;padding:3pt 6pt;text-align:right;
+  white-space:normal;font-variant-numeric:tabular-nums;
+}
+#rapport th:first-child, #rapport td:first-child{text-align:left}
+#rapport thead th{
+  background:var(--wn-fond);color:var(--wn-encre);font-weight:700;
+  text-transform:none;letter-spacing:0;font-size:9pt;opacity:1;
+}
+#rapport tbody tr{page-break-inside:avoid}
+#rapport tbody tr:nth-child(even){background:#F4F9FC}
+#rapport tr.wn-fort td{font-weight:700;background:var(--wn-fond);color:var(--wn-encre)}
+#rapport td.wn-src{color:#1F7A3D;font-weight:700}
+#rapport td.wn-hyp{color:#9C5A00;font-weight:700}
+
+#rapport .wn-graph{margin:6pt 0 12pt;page-break-inside:avoid}
+#rapport .wn-graph img{width:100%;border:.5pt solid #9DB8C9}
+#rapport .wn-legende{font-size:8.5pt;color:var(--wn-gris);font-style:italic;margin-top:2pt;text-align:left}
+
+#rapport .wn-formule{
+  font-family:Consolas,"Courier New",monospace;font-size:8.5pt;
+  background:#F4F9FC;border-left:2pt solid var(--wn-encre);
+  padding:3pt 7pt;margin:2pt 0;text-align:left;
+}
+#rapport .wn-avert{border:1pt solid var(--wn-encre);background:#FFF8E1;padding:7pt 10pt;margin:8pt 0}
+#rapport .wn-avert p{margin:0;font-size:9.5pt}
+#rapport .wn-pied{
+  border-top:1pt solid var(--wn-encre);margin-top:14pt;padding-top:6pt;
+  font-size:8.5pt;color:var(--wn-gris);text-align:center;
+}
+#rapport .wn-pied a{color:var(--wn-encre);text-decoration:none;font-weight:700}
+#rapport .saut{page-break-before:always}
+
+/* ── Bouton d'impression ────────────────────────────────────────── */
+button.print{
+  appearance:none;cursor:pointer;font:inherit;font-size:.9rem;font-weight:700;
+  color:var(--principale);background:var(--card);border:2px solid var(--principale);
+  border-radius:999px;padding:9px 20px;box-shadow:var(--shadow);
+  transition:transform .15s ease, background .15s ease;
+}
+button.print:hover{background:var(--accent-soft);transform:translateY(-2px)}
+
+/* ── Mise en page d'impression ──────────────────────────────────── */
+@media print{
+  @page{size:A4 portrait;margin:14mm 13mm 13mm}
+  html,body{background:#fff !important;color:#000;font-family:var(--wn-police)}
+  body>.wrap>*{display:none !important}
+  #rapport{display:block !important;font-family:var(--wn-police)}
+  a[href]::after{content:""}
+  .banniere,.identite{display:none !important}
+}
 
 /* ════════════════════════════════════════════════════════════════
    AJOUTS SPÉCIFIQUES ACC — tableau de participants éditable
@@ -487,6 +590,7 @@ button.del:hover{color:var(--bad);border-color:var(--bad)}
 
   <div class="actions">
     <button class="run" onclick="simuler()">Lancer la simulation</button>
+    <button class="print" onclick="imprimerRapport()">Imprimer le rapport</button>
     <span class="live">Recalcul automatique à chaque modification.</span>
   </div>
 
@@ -608,6 +712,9 @@ button.del:hover{color:var(--bad);border-color:var(--bad)}
     Cet outil fournit une estimation à titre indicatif et ne constitue ni un conseil financier, ni un conseil juridique, ni une garantie de résultat. Les valeurs par défaut sont éditables dans le code (objets <strong>PARAMS</strong> et <strong>PARTICIPANTS</strong>) et via les champs ci-dessus.
   </footer>
 
+  <!-- Rapport imprimable, construit par imprimerRapport() -->
+  <div id="rapport" aria-hidden="true"></div>
+
 </div>
 
 <script>
@@ -656,6 +763,8 @@ const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
 Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
 Chart.defaults.font.size = 12.5;
 Chart.defaults.color = css('--ink-soft');
+Chart.defaults.animation = false;   // rendu immédiat : l'export du rapport
+                                    // capturerait sinon une image vide
 
 let chart, chartPart, chartModes;
 const $ = id => document.getElementById(id);
@@ -962,6 +1071,9 @@ function simuler(){
   const best = Object.keys(MODES).reduce((a,b) => comp[b].rows[0].energieACC > comp[a].rows[0].energieACC ? b : a, 'statique');
   const ecart = comp[best].rows[0].energieACC - accAn1;
   const ecartVan = comp[best].van - r.van;
+
+  // État conservé pour le rapport imprimable
+  DERNIER = {p, r, comp, prodAn1, accAn1, consoTot, capTot, tauxACC, couverture, best, ecart, ecartVan};
   $('compDesc').innerHTML = ecart > 1
     ? `Le mode <strong>${MODES[best].nom}</strong> affecte <strong>${kwhF(ecart)}</strong> de plus par an que le mode actif, `
       + `soit <strong>${euro(ecartVan)}</strong> de VAN supplémentaire sur ${p.duree} ans. `
@@ -1087,6 +1199,322 @@ function simuler(){
       }
     }
   });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RAPPORT IMPRIMABLE
+   Construit un document complet à la charte « Watts News » à partir
+   du dernier calcul, puis ouvre la boîte d'impression du navigateur.
+   Le logo est encodé en base64 : le rapport s'imprime hors connexion.
+   ════════════════════════════════════════════════════════════════ */
+const LOGO_SB = "data:image/png;base64,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";
+
+/* Métadonnées de l'association — modifiables ici */
+const ASSO = {
+  nom:      "Soleil Beaujolais",
+  site:     "soleilbeaujolais.fr",
+  siteUrl:  "https://soleilbeaujolais.fr",
+  baseline: "Énergie citoyenne en Beaujolais"
+};
+
+/* Dernier état calculé, alimenté par simuler() */
+let DERNIER = null;
+
+const dateFr = () => new Date().toLocaleDateString('fr-FR',
+  {day:'numeric', month:'long', year:'numeric'});
+
+/* Tableau générique : entêtes + lignes déjà formatées */
+function tbl(entetes, lignes){
+  return `<table><thead><tr>${entetes.map(h=>`<th>${h}</th>`).join('')}</tr></thead>`
+       + `<tbody>${lignes.join('')}</tbody></table>`;
+}
+
+/* Ligne de paramètre : libellé, valeur, unité, statut */
+function ligneParam(lib, val, unite, statut){
+  const cls = statut.startsWith('Sourc') ? 'wn-src' : 'wn-hyp';
+  return `<tr><td>${lib}</td><td>${val}</td><td>${unite}</td><td class="${cls}">${statut}</td></tr>`;
+}
+
+function imprimerRapport(){
+  simuler();                        // garantit un état à jour
+  if (!DERNIER){ alert("Lancez d'abord une simulation."); return; }
+  const {p, r, comp, prodAn1, accAn1, consoTot, capTot, tauxACC, couverture, best, ecart, ecartVan} = DERNIER;
+
+  const pc  = (n,d=1) => pctF(n,d);
+  const eur = n => euro(n);
+  const kwh = n => kwhF(n);
+  const montant = n => nf0.format(Math.round(n));
+  const prix4 = n => n.toLocaleString('fr-FR',{minimumFractionDigits:4, maximumFractionDigits:4});
+  const ans = v => v === null ? 'Non atteint'
+    : v.toLocaleString('fr-FR',{minimumFractionDigits:1, maximumFractionDigits:1}) + ' ans';
+
+  /* ── Verdict automatique pour le résumé ───────────────────────── */
+  const viable   = r.van >= 0;
+  const consoOk  = r.gains[0] > 0;
+  const verdict  =
+    viable && consoOk
+      ? `Dans cette configuration, l'opération est <strong>équilibrée pour les deux parties</strong> : le producteur dégage une valeur actuelle nette de ${eur(r.van)} sur ${p.duree} ans, et les participants économisent ${eur(r.gains[0])} dès la première année.`
+      : viable && !consoOk
+      ? `L'opération est <strong>rentable pour le producteur</strong> (VAN de ${eur(r.van)}) mais <strong>défavorable aux consommateurs</strong>, qui paieraient plus cher qu'au réseau. Le prix de vente ACC de ${prix4(p.prixACC)} €/kWh doit être abaissé.`
+      : !viable && consoOk
+      ? `L'opération <strong>profite aux consommateurs</strong> (${eur(r.gains[0])} d'économies la première année) mais <strong>ne rembourse pas l'investissement</strong> : la valeur actuelle nette du producteur s'établit à ${eur(r.van)}. Il faut soit relever le prix de vente, soit obtenir un soutien à l'investissement, soit réduire les charges de gestion.`
+      : `Dans cette configuration, <strong>aucune des deux parties n'y trouve son compte</strong>. Les paramètres doivent être revus avant d'envisager le projet.`;
+
+  const dimension = capTot > 0 && prodAn1 > capTot * 1.15
+    ? `L'installation produit ${kwh(prodAn1)} pour une capacité d'absorption collective de seulement ${kwh(capTot)} : elle est <strong>surdimensionnée</strong> au regard des besoins simultanés du collectif. Une part importante de la production partira en surplus quelle que soit la clé retenue.`
+    : prodAn1 < capTot * 0.6
+    ? `L'installation produit ${kwh(prodAn1)} pour une capacité d'absorption de ${kwh(capTot)} : le collectif pourrait absorber <strong>bien davantage</strong>. Une puissance supérieure serait valorisable.`
+    : `Le rapport entre la production (${kwh(prodAn1)}) et la capacité d'absorption du collectif (${kwh(capTot)}) est <strong>cohérent</strong>.`;
+
+  const cleTxt = ecart > 1
+    ? `Le mode <strong>${MODES[best].nom}</strong> affecterait ${kwh(ecart)} de plus par an que le mode retenu, soit ${eur(ecartVan)} de valeur actuelle nette supplémentaire. Cette énergie n'est pas perdue physiquement : elle bascule en surplus collectif, valorisé ${prix4(p.prixSurplus)} €/kWh au lieu de ${prix4(p.prixACC)} €/kWh.`
+    : `Le mode d'affectation retenu exploite déjà toute la capacité d'absorption disponible : aucune autre clé ne ferait mieux avec ces paramètres.`;
+
+  /* ── Paramètres ───────────────────────────────────────────────── */
+  const paramsProd = [
+    ligneParam("Puissance installée", p.puissanceKwc.toLocaleString('fr-FR'), "kWc", "Hypothèse projet"),
+    ligneParam("Productible", p.productible.toLocaleString('fr-FR'), "kWh/kWc/an", "Sourcé — PVGIS"),
+    ligneParam("Investissement", montant(p.investissement), "€", "Hypothèse projet"),
+    ligneParam("Subventions / apports", montant(p.subvention), "€", "Hypothèse projet"),
+    ligneParam("Investissement net", montant(Math.max(0, p.investissement - p.subvention)), "€", "Calculé"),
+  ];
+  const paramsPrix = [
+    ligneParam("Prix réseau évité (an 0)", prix4(p.prixReseau), "€/kWh", "Sourcé — TRV"),
+    ligneParam("Prix de vente ACC", prix4(p.prixACC), "€/kWh", "Hypothèse — décision PMO"),
+    ligneParam("Réseau et taxes sur kWh ACC", prix4(p.acheminement), "€/kWh", "Hypothèse à vérifier"),
+    ligneParam("Valorisation du surplus", prix4(p.prixSurplus), "€/kWh", "Hypothèse à vérifier"),
+    ligneParam("Marge unitaire consommateur", prix4(p.prixReseau - p.prixACC - p.acheminement), "€/kWh", "Calculé"),
+  ];
+  const paramsChg = [
+    ligneParam("Frais de PMO / gestion", montant(p.fraisPMO), "€/an", "Hypothèse"),
+    ligneParam("Composante de gestion majorée", montant(p.compGestion), "€/an/participant", "Hypothèse à vérifier"),
+    ligneParam("Exploitation et maintenance", montant(p.maintenance), "€/an", "Hypothèse"),
+    ligneParam("Charges annuelles totales", montant(p.maintenance + p.fraisPMO + p.compGestion*(participants.length+1)), "€/an", "Calculé"),
+    ligneParam("Hausse du prix réseau", pc(p.inflationReseau*100), "%/an", "Hypothèse"),
+    ligneParam("Indexation du prix ACC", pc(p.indexACC*100), "%/an", "Hypothèse — décision PMO"),
+    ligneParam("Dégradation des panneaux", pc(p.degradation*100,2), "%/an", "Hypothèse"),
+    ligneParam("Durée d'analyse", p.duree, "ans", "Hypothèse"),
+    ligneParam("Taux d'actualisation", pc(p.tauxActualisation*100), "%", "Hypothèse"),
+  ];
+
+  /* ── Participants ─────────────────────────────────────────────── */
+  const caps = capacites();
+  const totCle = participants.reduce((s,x)=>s+(+x.cle||0),0);
+  const ligPart = participants.map((x,i)=>
+    `<tr><td>${i+1}. ${x.nom}</td><td>${kwh(+x.conso||0)}</td><td>${pc(+x.cle||0)}</td>`
+  + `<td>${pc(+x.simul||0,0)}</td><td>${kwh(caps[i])}</td></tr>`);
+  ligPart.push(`<tr class="wn-fort"><td>Total</td><td>${kwh(consoTot)}</td><td>${pc(totCle)}</td><td>—</td><td>${kwh(capTot)}</td></tr>`);
+
+  const ligBilan = r.detailAn1.map(d =>
+    `<tr><td>${d.nom}</td><td>${kwh(d.conso)}</td><td>${kwh(d.cap)}</td><td>${kwh(d.energie)}</td>`
+  + `<td>${pc(d.part)}</td><td>${pc(d.conso>0 ? d.energie/d.conso*100 : 0)}</td><td>${eur(d.gain)}</td></tr>`);
+  ligBilan.push(`<tr class="wn-fort"><td>Total</td><td>${kwh(consoTot)}</td><td>${kwh(capTot)}</td><td>${kwh(accAn1)}</td><td>${pc(tauxACC)}</td><td>${pc(couverture)}</td><td>${eur(r.gains[0])}</td></tr>`);
+
+  /* ── Comparaison des modes ────────────────────────────────────── */
+  const ligModes = Object.keys(MODES).map(k => {
+    const m = comp[k], r0 = m.rows[0];
+    const taux = r0.prod > 0 ? r0.energieACC/r0.prod*100 : 0;
+    return `<tr class="${k===MODE_ACTIF?'wn-fort':''}"><td>${MODES[k].nom}${k===MODE_ACTIF?' (retenu)':''}</td>`
+         + `<td>${kwh(r0.energieACC)}</td><td>${pc(taux)}</td><td>${kwh(r0.surplus)}</td>`
+         + `<td>${eur(r0.recettes)}</td><td>${eur(m.gains[0])}</td><td>${eur(m.van)}</td></tr>`;
+  });
+
+  /* ── Résultats ────────────────────────────────────────────────── */
+  const ligRes = [
+    `<tr><td>Production année 1</td><td>${kwh(prodAn1)}</td></tr>`,
+    `<tr><td>Capacité d'absorption du collectif</td><td>${kwh(capTot)}</td></tr>`,
+    `<tr><td>Énergie partagée en ACC (an 1)</td><td>${kwh(accAn1)}</td></tr>`,
+    `<tr><td>Surplus collectif (an 1)</td><td>${kwh(r.rows[0].surplus)}</td></tr>`,
+    `<tr class="wn-fort"><td>Taux d'autoconsommation collective</td><td>${pc(tauxACC)}</td></tr>`,
+    `<tr class="wn-fort"><td>Couverture des besoins du collectif</td><td>${pc(couverture)}</td></tr>`,
+    `<tr><td>Recettes producteur (an 1)</td><td>${eur(r.rows[0].recettes)}</td></tr>`,
+    `<tr><td>Flux net producteur (an 1)</td><td>${eur(r.rows[0].net)}</td></tr>`,
+    `<tr class="wn-fort"><td>Valeur actuelle nette producteur</td><td>${eur(r.van)}</td></tr>`,
+    `<tr><td>Taux de rendement interne</td><td>${r.tri===null?'—':pc(r.tri*100)}</td></tr>`,
+    `<tr><td>Temps de retour brut</td><td>${ans(r.retourBrut)}</td></tr>`,
+    `<tr><td>Temps de retour actualisé</td><td>${ans(r.retourAct)}</td></tr>`,
+    `<tr class="wn-fort"><td>Économies consommateurs (an 1)</td><td>${eur(r.gains[0])}</td></tr>`,
+    `<tr><td>Économies consommateurs cumulées</td><td>${eur(r.cumulConso[r.cumulConso.length-1])}</td></tr>`,
+  ];
+
+  /* ── Détail année par année ───────────────────────────────────── */
+  const ligAnnees = r.rows.map(row =>
+    `<tr><td>${row.t}</td><td>${kwh(row.prod)}</td><td>${kwh(row.energieACC)}</td><td>${kwh(row.surplus)}</td>`
+  + `<td>${eur(row.recettes)}</td><td>${eur(row.net)}</td><td>${eur(r.cumul[row.t])}</td>`
+  + `<td>${eur(r.gains[row.t-1])}</td></tr>`);
+
+  /* ── Graphiques exportés en image ─────────────────────────────── */
+  const img = (c, legende) => {
+    if (!c) return '';
+    // le canvas Chart.js est transparent : on le recompose sur fond blanc
+    const src = c.canvas, tmp = document.createElement('canvas');
+    tmp.width = src.width; tmp.height = src.height;
+    const g = tmp.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, tmp.width, tmp.height);
+    g.drawImage(src, 0, 0);
+    return `<div class="wn-graph"><img src="${tmp.toDataURL('image/png')}" alt="">`
+         + `<div class="wn-legende">${legende}</div></div>`;
+  };
+
+  /* ── Assemblage ───────────────────────────────────────────────── */
+  document.getElementById('rapport').innerHTML = `
+<div class="wn-tete">
+  <img src="${LOGO_SB}" alt="${ASSO.nom}">
+  <div class="wn-titre">${ASSO.nom.toUpperCase()}</div>
+  <div class="wn-slogan">Autoconsommation collective</div>
+</div>
+
+<div class="wn-cartouche">
+  <h1>Rapport de simulation — Autoconsommation collective</h1>
+  <div class="sous">${participants.length} participants · ${p.puissanceKwc} kWc · mode « ${MODES[MODE_ACTIF].nom} »</div>
+  <div class="meta">Établi le ${dateFr()} · horizon ${p.duree} ans · document d'estimation, sans valeur contractuelle</div>
+</div>
+
+<div class="wn-resume">
+  <div class="wn-resume-titre">Synthèse</div>
+  <p>${verdict}</p>
+  <p>${dimension}</p>
+  <p>${cleTxt}</p>
+</div>
+
+<h2>1. Objet et principe de l'opération</h2>
+<p>L'autoconsommation collective, définie à l'article L. 315-2 du code de l'énergie, permet à plusieurs
+participants proches de partager localement une production renouvelable, au sein d'une <strong>personne morale
+organisatrice</strong> (PMO), via le réseau public de distribution. L'électricité ne circule pas dans des câbles
+dédiés : elle transite par le réseau, et le partage est une opération <strong>comptable</strong>. Le gestionnaire
+de réseau affecte, toutes les 15 minutes, une part de la production à chaque consommateur selon une clé de
+répartition transmise par la PMO.</p>
+<p>Cette simulation modélise <strong>deux points de vue simultanément</strong> : celui du producteur, qui investit
+et perçoit des recettes, et celui des consommateurs, qui économisent sur leur facture. Ces deux intérêts
+s'opposent partiellement à travers le prix de vente ACC : ce que l'un gagne, l'autre le perd. Un projet n'est
+viable que si les deux colonnes sont acceptables.</p>
+
+<h2>2. Paramètres retenus</h2>
+<h3>2.1 Production et investissement</h3>
+${tbl(['Paramètre','Valeur','Unité','Statut'], paramsProd)}
+<h3>2.2 Prix de l'énergie</h3>
+${tbl(['Paramètre','Valeur','Unité','Statut'], paramsPrix)}
+<p>La <strong>marge unitaire consommateur</strong> est la clé de lecture économique de l'opération : elle
+correspond au prix réseau évité, diminué du prix de vente ACC et des coûts de réseau et taxes qui restent dus.
+C'est l'espace, souvent étroit, dans lequel producteur et consommateurs doivent tous deux trouver leur compte.</p>
+<h3>2.3 Charges et hypothèses économiques</h3>
+${tbl(['Paramètre','Valeur','Unité','Statut'], paramsChg)}
+<div class="wn-avert"><p><strong>Statut des valeurs.</strong> Seuls le prix réseau et le productible sont des
+données sourcées. Toutes les autres valeurs sont des hypothèses de travail, à confirmer auprès du gestionnaire
+de réseau, des fournisseurs et des textes en vigueur avant toute décision d'investissement.</p></div>
+
+<h2>3. Composition du collectif</h2>
+${tbl(['Participant','Consommation','Clé statique','Simultanéité',"Capacité d'absorption"], ligPart)}
+<p>La <strong>simultanéité</strong> désigne la part de la consommation annuelle qui a lieu pendant les heures de
+production. Multipliée par la consommation, elle donne la <strong>capacité d'absorption</strong> : le plafond
+physique de ce qu'un participant peut recevoir sur l'année, quelle que soit la clé qui lui est attribuée. C'est
+la traduction annuelle de la règle de l'article D. 315-4, selon laquelle l'énergie affectée ne peut excéder la
+consommation mesurée. C'est aussi le paramètre le plus sensible de toute la simulation : sans courbes de charge
+réelles, il s'agit d'une estimation.</p>
+
+<div class="saut"></div>
+<h2>4. Résultats de la simulation</h2>
+${tbl(['Indicateur','Valeur'], ligRes)}
+<p><strong>Lecture.</strong> La valeur actuelle nette ramène les flux futurs à leur valeur d'aujourd'hui : positive,
+le projet crée de la valeur par rapport à un placement au taux d'actualisation retenu. Le taux de rendement interne
+se compare à ce même taux. Le temps de retour actualisé, plus sévère que le temps de retour brut, tient compte du
+coût du temps. Le taux d'autoconsommation collective et la couverture des besoins ne mesurent pas la même chose :
+le premier rapporte l'énergie partagée à la production, le second aux besoins du collectif.</p>
+${img(typeof chart !== 'undefined' ? chart : null, "Trésorerie cumulée du producteur (non actualisée et actualisée) et économies cumulées des consommateurs.")}
+${img(typeof chartPart !== 'undefined' ? chartPart : null, "Consommation, capacité d'absorption et énergie effectivement affectée, par participant, la première année.")}
+
+<h2>5. Bilan par participant (année 1)</h2>
+${tbl(['Participant','Consommation','Capacité','Énergie ACC','Part de la production','Couverture','Économie'], ligBilan)}
+
+<div class="saut"></div>
+<h2>6. Comparaison des clés de répartition</h2>
+<p>Trois modes d'affectation sont comparés ci-dessous. Ils partagent exactement la même production : seule change
+la manière de l'attribuer, et donc la part qui finit en surplus.</p>
+${tbl(["Mode d'affectation",'Énergie ACC',"Taux d'ACC",'Surplus','Recettes prod.','Économies conso.','VAN prod.'], ligModes)}
+${img(typeof chartModes !== 'undefined' ? chartModes : null, "Production partagée ou perdue en surplus, selon le mode d'affectation retenu (année 1).")}
+<ul>
+<li><strong>Clé statique</strong> — des coefficients fixes, identiques à chaque pas de mesure. Simple et répandue,
+mais si un participant se voit affecter plus d'énergie qu'il ne peut absorber, le reliquat n'est pas réaffecté aux
+autres : il bascule en surplus collectif.</li>
+<li><strong>Clé au prorata des consommations</strong> — fixe elle aussi, mais calculée au prorata des consommations
+annuelles. Elle épouse mieux le poids réel de chaque participant, sans s'adapter aux variations instantanées.</li>
+<li><strong>Ordre de priorité (maximisation)</strong> — la production est affectée séquentiellement, chacun prenant
+ce qu'il peut absorber avant de laisser la place au suivant. C'est la logique de maximisation de l'autoconsommation
+introduite par le décret n° 2026-561 du 26 juin 2026, dont l'entrée en vigueur est prévue au 1er juillet 2027. Elle
+réduit le surplus, mais rend la répartition inégale : les derniers de la liste peuvent ne rien recevoir, ce qui pose
+une question d'équité relevant de la gouvernance de la PMO.</li>
+</ul>
+
+<h2>7. Cadre réglementaire applicable</h2>
+<ul>
+<li><strong>Périmètre</strong> — 2 km au maximum entre les participants les plus éloignés. Dérogations : 10 km en
+communes rurales ou périurbaines, 20 km en communes rurales, 20 km si un participant est un service d'incendie et
+de secours, ou le territoire d'un EPCI à fiscalité propre.</li>
+<li><strong>Puissance</strong> — inférieure à 5 MW pour une opération étendue, jusqu'à 10 MW pour certaines
+opérations à l'échelle d'un EPCI.</li>
+<li><strong>Répartition</strong> — décret n° 2026-561 du 26 juin 2026, rectifié le 5 juillet 2026 : affectation
+prioritaire aux consommateurs dans la limite de leur consommation mesurée, encadrement du calendrier de
+transmission des coefficients. Application échelonnée entre le 1er juillet 2026 et le 1er juillet 2027.</li>
+<li><strong>Accise sur l'électricité</strong> — tarif particulier de 0 €/MWh depuis le 1er mars 2025 pour les kWh
+affectés, pour une installation de moins de 1 MWc (articles L. 312-87 et L. 312-79 du CIBS). C'est aujourd'hui le
+principal moteur économique du modèle.</li>
+<li><strong>TURPE</strong> — systématiquement prélevé sur tout kWh soutiré, y compris affecté, même cédé
+gratuitement. Une grille spécifique existe sur option (article L. 315-3), réservée sous le TURPE 7 aux opérations
+dont tous les participants sont raccordés en aval du même poste HTA/BT. Une composante de gestion majorée
+s'applique à tous les participants.</li>
+</ul>
+
+<div class="saut"></div>
+<h2>8. Détail année par année</h2>
+${tbl(['Année','Production','Énergie ACC','Surplus','Recettes','Flux net','Trésorerie cumulée','Économies conso.'], ligAnnees)}
+
+<h2>9. Formules employées</h2>
+<div class="wn-formule">Production(t) = puissance × productible × (1 − dégradation)^(t−1)</div>
+<div class="wn-formule">Capacité(i) = consommation(i) × simultanéité(i)</div>
+<div class="wn-formule">Énergie ACC(i,t) = selon le mode d'affectation, plafonnée par Capacité(i)</div>
+<div class="wn-formule">Surplus(t) = Production(t) − Σ Énergie ACC(i,t)</div>
+<div class="wn-formule">Recettes(t) = Σ Énergie ACC × Prix ACC(t) + Surplus × prix surplus</div>
+<div class="wn-formule">Charges(t) = maintenance + frais PMO + composante gestion × (participants + 1)</div>
+<div class="wn-formule">Économie conso(i,t) = Énergie ACC(i,t) × [ Prix réseau(t) − Prix ACC(t) − acheminement ]</div>
+<div class="wn-formule">VAN = −Investissement net + Σ Flux net(t) / (1 + taux d'actualisation)^t</div>
+<div class="wn-formule">TRI = taux annulant la VAN, résolu par bissection</div>
+
+<h2>10. Limites du modèle</h2>
+<ul>
+<li><strong>Raisonnement en énergie annuelle</strong>, non au pas de 15 minutes : la simultanéité remplace une
+simulation sur courbes de charge réelles. Suffisant pour une pré-étude et pour comparer des modes d'affectation,
+insuffisant pour engager un investissement.</li>
+<li><strong>Un prix réseau unique</strong> pour tous les participants, alors que les tarifs varient et se
+déclinent le plus souvent sur quatre plages temporelles pour les non-résidentiels.</li>
+<li><strong>Le TURPE spécifique optionnel n'est pas modélisé</strong>, ni la « part fixe » de production non
+affectée introduite par le décret de 2026, supposée nulle.</li>
+<li><strong>Aucune fiscalité</strong> sur les recettes du producteur, ni IFER, ni taxe foncière, ni imposition des
+bénéfices. <strong>Aucun financement</strong> : l'investissement est supposé payé comptant en année 0.</li>
+<li><strong>Le collectif est supposé stable sur toute la durée.</strong> Un participant qui déménage ou se retire
+oblige à revoir la clé — un risque propre à l'ACC.</li>
+<li>Les écarts affichés entre modes d'affectation constituent une <strong>borne haute</strong> du gain réellement
+atteignable, une clé dynamique ne pouvant anticiper parfaitement les consommations.</li>
+</ul>
+
+<h2>11. Suites à donner</h2>
+<ul>
+<li>Confirmer l'éligibilité du périmètre et la puissance cumulée auprès du gestionnaire de réseau.</li>
+<li>Remplacer les coefficients de simultanéité par des courbes de charge réelles, seul moyen de fiabiliser le
+résultat.</li>
+<li>Vérifier le tarif d'acheminement applicable, la valorisation du surplus et l'éligibilité au TURPE spécifique.</li>
+<li>Arbitrer le prix de vente ACC et le mode d'affectation en instance de PMO : ce sont des décisions de
+gouvernance, que le calcul éclaire sans les trancher.</li>
+<li>Vérifier la compatibilité des aides envisagées avec le régime de valorisation du surplus retenu.</li>
+</ul>
+
+<div class="wn-pied">
+  ${ASSO.nom} — ${ASSO.baseline} · <a href="${ASSO.siteUrl}">${ASSO.site}</a><br>
+  Rapport produit par le simulateur d'autoconsommation collective de ${ASSO.nom}, le ${dateFr()}.
+  Document d'estimation à caractère indicatif : il ne constitue ni un conseil financier, ni un conseil juridique,
+  ni une garantie de résultat.
+</div>`;
+
+  window.print();
 }
 
 /* ── Recalcul automatique + lancement initial ───────────────────── */
