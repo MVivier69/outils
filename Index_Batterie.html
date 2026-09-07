@@ -250,6 +250,28 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
   text-decoration:none;font-size:14px;font-weight:600;color:var(--ink);box-shadow:var(--shadow);
 }
 .manual-link:hover{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ── Bouton d'export ────────────────────────────────────────────── */
+button.print{
+  appearance:none;cursor:pointer;font:inherit;font-size:.9rem;font-weight:700;
+  color:var(--principale);background:var(--card);border:2px solid var(--principale);
+  border-radius:999px;padding:9px 20px;box-shadow:var(--shadow);
+  transition:transform .15s ease, background .15s ease;
+}
+button.print:hover{background:var(--accent-soft);transform:translateY(-2px)}
+button.print:disabled{opacity:.55;cursor:default;transform:none}
+
+/* ── Impression de la page elle-même ────────────────────────────── */
+/* Le rapport détaillé s'obtient par le bouton « Télécharger en Word ». */
+@media print{
+  @page{size:A4 portrait;margin:12mm}
+  body{background:#fff}
+  .actions, .toolbar, button, .help{display:none !important}
+  .card, .kpi, .chart-card, .table-card, details.method{
+    box-shadow:none;border:1px solid var(--line);break-inside:avoid;
+  }
+  a[href]::after{content:""}
+}
 </style>
 </head>
 
@@ -361,6 +383,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
 
   <div class="actions">
     <button class="run" onclick="simuler()">Lancer la simulation</button>
+    <button class="print" onclick="telechargerRapportWord(this)">Télécharger en Word</button>
     <span class="live">Recalcul automatique à chaque modification.</span>
   </div>
 
@@ -469,6 +492,8 @@ const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
 Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
 Chart.defaults.font.size = 12.5;
 Chart.defaults.color = css('--ink-soft');
+Chart.defaults.animation = false;   // rendu immédiat : l'export du rapport
+                                    // capturerait sinon une image vide
 
 let chart;
 const $ = id => document.getElementById(id);
@@ -521,6 +546,9 @@ function simuler(){
 
   // Meilleure option = VAN la plus élevée
   const best = resultats.reduce((a, b) => b.van > a.van ? b : a, resultats[0]);
+
+  // État conservé pour le rapport Word
+  DERNIER = {p, resultats, best, labels};
 
   // ── KPIs ──────────────────────────────────────────────────────
   $('kpis').innerHTML = `
@@ -584,6 +612,539 @@ function simuler(){
       }
     }
   });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EXPORT WORD — génération du rapport .docx dans le navigateur
+   Le corps du générateur est identique à celui utilisé hors ligne :
+   même charte, même contenu, mêmes fiches issues du manuel.
+   La bibliothèque docx (~760 Ko) n'est chargée qu'au premier clic.
+   ════════════════════════════════════════════════════════════════ */
+const FICHES = {"prod": {"nom": "Production PV", "unite": "kWh/an", "statut": "Contexte — non calculé", "quoi": [{"t": "La production photovoltaïque annuelle du site. Ce champ sert de ", "b": false, "i": false, "c": false}, {"t": "repère de cohérence", "b": true, "i": false, "c": false}, {"t": " pour vous aider à situer l'injection réseau.", "b": false, "i": false, "c": false}], "regler": [{"t": "Reprenez la production réelle relevée sur votre onduleur, ou l'estimation puissance × productible.", "b": false, "i": false, "c": false}], "effet": [{"t": "Aucun.", "b": true, "i": false, "c": false}, {"t": " Ce champ n'intervient pas dans les calculs actuels : seule l'injection réseau pilote le résultat. Il est là pour la lisibilité du contexte. Voir la section « Limites » à ce sujet.", "b": false, "i": false, "c": false}]}, "cons": {"nom": "Consommation", "unite": "kWh/an", "statut": "Contexte — non calculé", "quoi": [{"t": "La consommation électrique annuelle du foyer, également fournie à titre de repère.", "b": false, "i": false, "c": false}], "regler": [{"t": "Relevé sur la facture annuelle ou l'espace client du fournisseur.", "b": false, "i": false, "c": false}], "effet": [{"t": "Aucun", "b": true, "i": false, "c": false}, {"t": " sur le calcul, pour la même raison que le champ précédent.", "b": false, "i": false, "c": false}]}, "inj": {"nom": "Injection réseau", "unite": "kWh/an", "statut": "Hypothèse projet", "quoi": [{"t": "Le surplus actuellement injecté sur le réseau, c'est-à-dire l'énergie produite mais non consommée sur place. C'est le ", "b": false, "i": false, "c": false}, {"t": "gisement stockable", "b": true, "i": false, "c": false}, {"t": " : une batterie ne peut valoriser que ce qui partait au réseau.", "b": false, "i": false, "c": false}], "regler": [{"t": "Relevé sur votre compteur (index d'injection) ou sur votre facture de revente. À défaut : production annuelle × (1 − taux d'autoconsommation).", "b": false, "i": false, "c": false}], "effet": [{"t": "Paramètre pilote du modèle.", "b": true, "i": false, "c": false}, {"t": " Il plafonne l'énergie valorisable de chaque capacité : si l'injection est faible, même une grosse batterie ne trouvera rien à stocker et toutes les capacités convergeront vers le même résultat.", "b": false, "i": false, "c": false}]}, "achat": {"nom": "Prix d'achat", "unite": "€/kWh", "statut": "Hypothèse", "quoi": [{"t": "Le prix payé pour l'électricité soutirée au réseau — celui que la batterie permet d'éviter.", "b": false, "i": false, "c": false}], "regler": [{"t": "Part variable TTC de votre facture, hors abonnement. Pour aligner ce simulateur sur le simulateur photovoltaïque, saisissez 0,1940 (tarif réglementé « Bleu », option Base, 3–6 kVA, depuis le 1er février 2026).", "b": false, "i": false, "c": false}], "effet": [{"t": "Moitié de l'équation du gain. Chaque kWh stocké rapporte exactement ", "b": false, "i": false, "c": false}, {"t": "prix d'achat − prix de revente", "b": true, "i": false, "c": false}, {"t": ".", "b": false, "i": false, "c": false}]}, "vente": {"nom": "Prix de revente", "unite": "€/kWh", "statut": "Hypothèse", "quoi": [{"t": "Le tarif auquel votre surplus est actuellement racheté. C'est un ", "b": false, "i": false, "c": false}, {"t": "manque à gagner", "b": true, "i": false, "c": false}, {"t": " : en stockant, vous renoncez à cette recette.", "b": false, "i": false, "c": false}], "regler": [{"t": "Reprenez votre contrat d'achat en vigueur. Si votre surplus est cédé gratuitement, saisissez 0 — le gain par kWh devient alors maximal.", "b": false, "i": false, "c": false}], "effet": [{"t": "Se soustrait du gain unitaire. Un tarif de rachat élevé rend la batterie ", "b": false, "i": false, "c": false}, {"t": "moins", "b": true, "i": false, "c": false}, {"t": " intéressante, ce qui est contre-intuitif mais logique : l'écart à capturer se réduit.", "b": false, "i": false, "c": false}]}, "hausse": {"nom": "Hausse annuelle du prix élec.", "unite": "%/an", "statut": "Hypothèse", "quoi": [{"t": "L'indexation composée appliquée chaque année au prix d'achat.", "b": false, "i": false, "c": false}], "regler": [{"t": "Hypothèse, pas prévision. Testez 0 %, 2 % et 5 % pour encadrer le résultat.", "b": false, "i": false, "c": false}], "effet": [{"t": "Le prix de revente restant fixe dans ce modèle, la hausse ", "b": false, "i": false, "c": false}, {"t": "élargit l'écart", "b": true, "i": false, "c": false}, {"t": " capturé année après année, donc améliore progressivement le gain annuel.", "b": false, "i": false, "c": false}]}, "tauxActu": {"nom": "Taux d'actualisation", "unite": "%", "statut": "Hypothèse", "quoi": [{"t": "Le taux qui ramène les gains futurs à leur valeur d'aujourd'hui, pour le calcul de la VAN.", "b": false, "i": false, "c": false}], "regler": [{"t": "Coût de votre financement, ou rendement d'un placement sans risque. 2 à 4 % pour un ménage.", "b": false, "i": false, "c": false}], "effet": [{"t": "Un taux élevé pénalise les gains lointains et réduit la VAN de toutes les capacités, sans changer le classement de façon spectaculaire.", "b": false, "i": false, "c": false}]}, "cout": {"nom": "Coût batterie (référence 13,5 kWh)", "unite": "€", "statut": "Hypothèse", "quoi": [{"t": "Le coût installé d'une batterie de 13,5 kWh, qui sert de ", "b": false, "i": false, "c": false}, {"t": "référence", "b": true, "i": false, "c": false}, {"t": ". Le coût des autres capacités est déduit au prorata : une batterie de 20 kWh coûte 20/13,5 fois ce montant.", "b": false, "i": false, "c": false}], "regler": [{"t": "Reprenez un devis pour la capacité qui vous intéresse, puis ramenez-le à 13,5 kWh. Exemple : 4 000 € pour 10 kWh donnent 4 000 × 13,5/10 = 5 400 € à saisir.", "b": false, "i": false, "c": false}], "effet": [{"t": "Détermine l'investissement de chaque ligne du comparatif. Le prorata étant linéaire, il ne reproduit pas les économies d'échelle réelles — voir « Limites ».", "b": false, "i": false, "c": false}]}, "duree": {"nom": "Durée de vie / d'analyse", "unite": "ans", "statut": "Hypothèse", "quoi": [{"t": "L'horizon du calcul, ici assimilé à la durée de vie de la batterie.", "b": false, "i": false, "c": false}], "regler": [{"t": "Les garanties constructeur usuelles portent sur 10 ans ou un nombre de cycles. Retenir 20 ans est ", "b": false, "i": false, "c": false}, {"t": "optimiste", "b": true, "i": false, "c": false}, {"t": " pour une batterie lithium résidentielle : 10 à 15 ans constituent une hypothèse plus prudente.", "b": false, "i": false, "c": false}], "effet": [{"t": "Très structurant. Passer de 20 à 12 ans ampute fortement le gain cumulé et repousse, voire annule, le retour sur investissement.", "b": false, "i": false, "c": false}]}, "degBat": {"nom": "Dégradation batterie", "unite": "%/an", "statut": "Hypothèse", "quoi": [{"t": "La perte de capacité utile annuelle, appliquée de façon composée à l'énergie valorisée.", "b": false, "i": false, "c": false}], "regler": [{"t": "Les fiches techniques annoncent souvent 60 à 80 % de capacité résiduelle après 10 ans, soit environ 2 à 4 %/an au début. La valeur par défaut de 1 %/an est plutôt favorable.", "b": false, "i": false, "c": false}], "effet": [{"t": "À 1 %/an, l'énergie valorisée en année 20 vaut 83 % de celle de l'année 1. À 3 %/an, elle tombe à 56 % : l'effet devient déterminant.", "b": false, "i": false, "c": false}]}};
+const LOGO_SB = "data:image/png;base64,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";
+const BANNIERE_B64 = "data:image/jpeg;base64,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";
+
+/* Dernier état calculé, alimenté par simuler() */
+let DERNIER = null;
+
+let docxPret = null;
+function chargerDocx(){
+  if (docxPret) return docxPret;
+  docxPret = new Promise((resolve, reject) => {
+    if (window.docx) return resolve(window.docx);
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/docx@9/build/index.umd.js';
+    sc.onload  = () => window.docx ? resolve(window.docx)
+                                   : reject(new Error('bibliothèque docx illisible'));
+    sc.onerror = () => reject(new Error('téléchargement de la bibliothèque docx impossible'));
+    document.head.appendChild(sc);
+  });
+  return docxPret;
+}
+
+/* base64 → Uint8Array (ImageRun attend des octets) */
+function b64Octets(dataUrl){
+  const b = atob(String(dataUrl).split(',')[1]);
+  const u = new Uint8Array(b.length);
+  for (let k = 0; k < b.length; k++) u[k] = b.charCodeAt(k);
+  return u;
+}
+
+/* Canvas Chart.js recomposé sur fond blanc, en octets PNG */
+function grapheOctets(c){
+  if (!c) return null;
+  const src = c.canvas, t = document.createElement('canvas');
+  t.width = src.width; t.height = src.height;
+  const g = t.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height);
+  g.drawImage(src, 0, 0);
+  return t.toDataURL('image/png');
+}
+
+/* Collecte de l'état courant, au format attendu par le générateur */
+function collecterDonnees(){
+  const d = DERNIER, p = d.p;
+  let prec = 0;
+  const paliers = PALIERS.map(x => {
+    const lib = x.max === Infinity ? 'au-delà de ' + prec.toLocaleString('fr-FR') + ' kWh'
+                                   : "jusqu'à " + x.max.toLocaleString('fr-FR') + ' kWh';
+    prec = x.max; return {libelle: lib, plafond: x.plafond};
+  });
+  return {
+    params: p,
+    capacites: d.resultats.map(r => ({
+      cap:r.cap, cout:r.cout, recup:r.recup, gain1:r.gain1,
+      cumul:r.cumul, roi:r.roi, van:r.van, meilleure: r.cap === d.best.cap
+    })),
+    meilleure: {cap:d.best.cap, cout:d.best.cout, recup:d.best.recup,
+                gain1:d.best.gain1, cumul:d.best.cumul, roi:d.best.roi, van:d.best.van},
+    paliers,
+    graphes: { gain: grapheOctets(typeof chart !== 'undefined' ? chart : null) }
+  };
+}
+
+async function telechargerRapportWord(btn){
+  const libelle = btn ? btn.textContent : null;
+  try{
+    if (btn){ btn.disabled = true; btn.textContent = 'Préparation…'; }
+    simuler();
+    if (!DERNIER) throw new Error('aucune simulation disponible');
+
+    const docx = await chargerDocx();
+    const {
+      Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
+      Table, TableRow, TableCell, WidthType, ShadingType, BorderStyle,
+      ImageRun, PageBreak, Footer, Header, PageNumber, Tab, TabStopType
+    } = docx;
+
+    const D = collecterDonnees();
+    const LOGO = b64Octets(LOGO_SB);
+    const BANNIERE = b64Octets(BANNIERE_B64);
+    const img64 = s => b64Octets(s);
+
+    /* ── Charte du modèle Word « Watts News » ───────────────────────── */
+    const ENCRE = '0F4761';       // bleu-pétrole des titres
+    const FOND  = 'DEEBF7';       // trame claire des encadrés
+    const GRIS  = '595959';
+    const TRAIT = '9DB8C9';
+    const POLICE = 'Arial';
+    const LARGEUR_TEXTE = 10426;  // largeur d'un paragraphe : A4 (11906) − marges (2 × 740)
+    const LARGEUR = LARGEUR_TEXTE; // les tableaux occupent la même largeur que le texte
+
+    /* ── Mise en forme ──────────────────────────────────────────────── */
+    // VAR : donnée variable, surlignée en jaune pour être repérée et modifiée
+    const VAR = (t) => new TextRun({ text: String(t), font: POLICE, size: 18, bold: true });
+    const TXT = (t, o = {}) => new TextRun({ text: String(t), font: POLICE, size: 18, ...o });
+    const P = (children, o = {}) => new Paragraph({ children, spacing: { after: 80 }, ...o });
+    const corps = (t, o = {}) => new Paragraph({
+      children: Array.isArray(t) ? t : [new TextRun({ text: t, font: POLICE, size: 20 })],
+      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: 264 }, ...o
+    });
+    const titre2 = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 22, bold: true, color: ENCRE })],
+      spacing: { before: 260, after: 100 }, heading: HeadingLevel.HEADING_2
+    });
+    const titre3 = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 20, bold: true, color: ENCRE })],
+      spacing: { before: 160, after: 70 }, heading: HeadingLevel.HEADING_3
+    });
+    const puce = (t) => new Paragraph({
+      children: Array.isArray(t) ? t : [new TextRun({ text: t, font: POLICE, size: 20 })],
+      bullet: { level: 0 }, alignment: AlignmentType.JUSTIFIED, spacing: { after: 70 }
+    });
+    const formule = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: 'Consolas', size: 17 })],
+      spacing: { after: 40 }, shading: { type: ShadingType.CLEAR, fill: 'F4F9FC' },
+      border: { left: { style: BorderStyle.SINGLE, size: 12, color: ENCRE, space: 4 } }
+    });
+
+    /* ── Nombres au format français ─────────────────────────────────── */
+    const nf = (n, dec = 0) => Number(n).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const eur = n => nf(Math.round(n)) + ' €';
+    const kwh = n => nf(Math.round(n)) + ' kWh';
+    const pct = (n, dec = 1) => nf(n, dec) + ' %';
+    const px4 = n => nf(n, 4);
+    const ans = v => v === null ? 'Non atteint' : nf(v, 1) + ' ans';
+
+    /* ── Tableaux ───────────────────────────────────────────────────── */
+    function cell(children, { w, fill, align, span } = {}) {
+      return new TableCell({
+        width: { size: w, type: WidthType.DXA },
+        columnSpan: span,
+        shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
+        margins: { top: 40, bottom: 40, left: 80, right: 80 },
+        children: [new Paragraph({
+          children, spacing: { after: 0 },
+          alignment: align || AlignmentType.RIGHT
+        })]
+      });
+    }
+    function table(entetes, lignes, cols, centrerPremiere = false) {
+      const bord = { style: BorderStyle.SINGLE, size: 4, color: TRAIT };
+      // Les largeurs de colonnes sont exprimées en proportions : on les ramène
+      // à la largeur du document, quel que soit leur total d'origine.
+      const align1 = centrerPremiere ? AlignmentType.CENTER : AlignmentType.LEFT;
+      const somme = cols.reduce((a, b) => a + b, 0);
+      cols = cols.map(c => Math.round(c * LARGEUR / somme));
+      cols[cols.length - 1] += LARGEUR - cols.reduce((a, b) => a + b, 0);  // report de l'arrondi
+      const head = new TableRow({
+        tableHeader: true,
+        children: entetes.map((h, i) => cell(
+          [new TextRun({ text: h, font: POLICE, size: 17, bold: true, color: ENCRE })],
+          { w: cols[i], fill: FOND, align: i === 0 ? align1 : AlignmentType.CENTER }
+        ))
+      });
+      const corpsRows = lignes.map((lg, n) => new TableRow({
+        children: lg.cells.map((c, i) => cell(c, {
+          w: cols[i],
+          fill: lg.fort ? FOND : (n % 2 ? 'F4F9FC' : undefined),
+          align: i === 0 ? align1 : AlignmentType.CENTER
+        }))
+      }));
+      return new Table({
+        columnWidths: cols,
+        width: { size: LARGEUR, type: WidthType.DXA },
+        borders: { top: bord, bottom: bord, left: bord, right: bord, insideHorizontal: bord, insideVertical: bord },
+        rows: [head, ...corpsRows]
+      });
+    }
+    // ligne de paramètre : le libellé est fixe, la valeur est variable (surlignée)
+    const lp = (lib, val, unite, statut) => ({ cells: [
+      [TXT(lib, { size: 17 })],
+      [new TextRun({ text: String(val), font: POLICE, size: 17, bold: true })],
+      [TXT(unite, { size: 17 })],
+      [TXT(statut, { size: 17, bold: true, color: statut.startsWith('Sourc') ? '1F7A3D' : (statut === 'Calculé' ? GRIS : '9C5A00') })]
+    ]});
+    // cellule de donnée variable dans un tableau de résultats
+    const cv = (t) => [new TextRun({ text: String(t), font: POLICE, size: 17, bold: true })];
+    const cf = (t, o = {}) => [new TextRun({ text: String(t), font: POLICE, size: 17, ...o })];
+
+    /* ── Fiches explicatives reprises du manuel d'utilisation ───────── */
+    // Les segments proviennent du manuel : texte STABLE, jamais surligné.
+    const seg = (arr, taille = 18) => arr.map(x => new TextRun({
+      text: x.t, font: x.c ? 'Consolas' : POLICE, size: x.c ? taille - 1 : taille,
+      bold: !!x.b, italics: !!x.i
+    }));
+
+    function fiche(id) {
+      const f = FICHES[id];
+      if (!f) return [];
+      const bloc = [];
+      bloc.push(new Paragraph({
+        spacing: { before: 120, after: 40 },
+        children: [
+          new TextRun({ text: f.nom, font: POLICE, size: 19, bold: true, color: ENCRE }),
+          new TextRun({ text: `  (${f.unite})`, font: POLICE, size: 17, color: GRIS }),
+          new TextRun({ text: `  ·  ${f.statut}`, font: POLICE, size: 16, bold: true,
+            color: f.statut.startsWith('Sourc') ? '1F7A3D' : '9C5A00' })
+        ]
+      }));
+      const item = (etiq, contenu) => new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 60 }, indent: { left: 220 },
+        children: [
+          new TextRun({ text: etiq + ' ', font: POLICE, size: 18, bold: true, color: GRIS }),
+          ...seg(contenu)
+        ]
+      });
+      bloc.push(item("Ce que c'est.", f.quoi));
+      bloc.push(item('Comment le régler.', f.regler));
+      bloc.push(item('Effet sur le résultat.', f.effet));
+      return bloc;
+    }
+    const fiches = (...ids) => ids.flatMap(fiche);
+
+
+    /* Graphique exporté, à la largeur du texte */
+    const graphe = (b64, legende) => {
+      if (!b64) return [];
+      return [
+        new Paragraph({ spacing: { before: 120, after: 40 }, children: [
+          new ImageRun({ type: 'png', data: img64(b64), transformation: { width: 695, height: 270 } })
+        ]}),
+        new Paragraph({ spacing: { after: 160 }, children: [
+          new TextRun({ text: legende, font: POLICE, size: 16, italics: true, color: GRIS })
+        ]})
+      ];
+    };
+    /* ════════════════════════════════════════════════════════════════
+       CONTENU — RAPPORT STOCKAGE PAR BATTERIES
+       ════════════════════════════════════════════════════════════════ */
+    const p = D.params, B = D.meilleure;
+    const dateFr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const ecart = p.achat - p.vente;
+
+    /* Verdict rédigé à partir des résultats */
+    const viable = B.van >= 0;
+    const verdict = viable
+      ? `Dans cette configuration, le stockage est rentable : la capacité de ${nf(B.cap, 1)} kWh dégage la meilleure valeur actuelle nette, ${eur(B.van)} sur ${p.duree} ans, pour un coût de ${eur(B.cout)}. L'investissement est remboursé au bout de ${B.roi === null ? 'plus de ' + p.duree + ' ans' : B.roi + ' ans'}.`
+      : `Dans cette configuration, aucune des capacités comparées ne rembourse son coût sur ${p.duree} ans. La meilleure d'entre elles, ${nf(B.cap, 1)} kWh, affiche une valeur actuelle nette de ${eur(B.van)}. Le stockage n'est pas justifié économiquement avec ces hypothèses.`;
+
+    const surEcart = `Le moteur de la rentabilité n'est pas le prix de l'électricité, mais l'écart entre le prix d'achat (${px4(p.achat)} €/kWh) et le prix de revente (${px4(p.vente)} €/kWh), soit ${px4(ecart)} €/kWh capturés sur chaque kilowattheure stocké. `
+      + (p.vente >= p.achat * 0.6
+         ? `Ce tarif de rachat est élevé au regard du prix d'achat : il réduit d'autant l'intérêt du stockage, ce qui est contre-intuitif mais logique — l'écart à capturer se resserre.`
+         : `Cet écart est confortable : chaque kilowattheure détourné du réseau rapporte une part significative de sa valeur.`);
+
+    const surGisement = `Le gisement stockable est plafonné par l'injection réseau, ${kwh(p.inj)} par an. `
+      + (B.recup >= p.inj * 0.95
+         ? `La capacité conseillée sature ce gisement : augmenter encore la batterie ne servirait à rien tant que le surplus injecté reste à ce niveau.`
+         : `La capacité conseillée en valorise ${kwh(B.recup)}, soit ${pct(p.inj > 0 ? B.recup / p.inj * 100 : 0)} — le reste dépasse ce qu'une batterie de cette taille peut absorber au fil de l'année.`);
+
+    const contenu = [];
+
+    /* ── Cartouche de titre ─────────────────────────────────────────── */
+    const bordEncre = { style: BorderStyle.SINGLE, size: 12, color: ENCRE };
+    contenu.push(new Table({
+      columnWidths: [LARGEUR_TEXTE],
+      width: { size: LARGEUR_TEXTE, type: WidthType.DXA },
+      borders: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre },
+      rows: [new TableRow({ children: [new TableCell({
+        width: { size: LARGEUR_TEXTE, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: FOND },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+            new TextRun({ text: 'Rapport de simulation — Stockage par batteries', font: POLICE, size: 26, bold: true })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+            VAR(`${D.capacites.length} capacités comparées`), TXT(' · ', { bold: true }),
+            TXT('conseillée : ', { bold: true }), VAR(`${nf(B.cap, 1)} kWh`), TXT(' · ', { bold: true }),
+            VAR(`${kwh(p.inj)} injectés/an`)
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [
+            TXT('Établi le ', { size: 17, color: GRIS }), new TextRun({ text: dateFr, font: POLICE, size: 17, color: GRIS }),
+            TXT(' · horizon ', { size: 17, color: GRIS }), new TextRun({ text: `${p.duree} ans`, font: POLICE, size: 17, color: GRIS })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 70 }, children: [
+            new TextRun({
+              text: "Document d'estimation à caractère indicatif : il ne constitue ni un conseil financier, "
+                  + "ni un conseil juridique, ni une garantie de résultat.",
+              font: POLICE, size: 16, italics: true, color: GRIS })
+          ]})
+        ]
+      })]})]
+    }));
+
+    /* ── Note de lecture ────────────────────────────────────────────── */
+    contenu.push(new Paragraph({ text: '', spacing: { after: 160 } }));
+    contenu.push(new Table({
+      columnWidths: [LARGEUR_TEXTE],
+      width: { size: LARGEUR_TEXTE, type: WidthType.DXA },
+      borders: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre },
+      rows: [new TableRow({ children: [new TableCell({
+        width: { size: LARGEUR_TEXTE, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: 'FFF8E1' },
+        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+        children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 70 }, children: [
+            TXT('Comment lire ce rapport', { bold: true, color: ENCRE, size: 20 })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [
+            TXT("Il est produit automatiquement par le simulateur : les chiffres reprennent l'état de la "),
+            TXT("simulation au moment de l'export. Dans les tableaux de paramètres, la colonne "),
+            TXT('Statut', { bold: true }),
+            TXT(' distingue les données '),
+            new TextRun({ text: 'sourcées', font: POLICE, size: 18, bold: true, color: '1F7A3D' }),
+            TXT(', les '),
+            new TextRun({ text: 'hypothèses', font: POLICE, size: 18, bold: true, color: '9C5A00' }),
+            TXT(' à confirmer, et les valeurs '),
+            new TextRun({ text: 'calculées', font: POLICE, size: 18, bold: true, color: GRIS }),
+            TXT(". Les paragraphes explicatifs sont repris du manuel d'utilisation et restent valables "),
+            TXT('quelles que soient les valeurs saisies.')
+          ]})
+        ]
+      })]})]
+    }));
+
+    /* ── 1. Objet ───────────────────────────────────────────────────── */
+    contenu.push(titre2("1. Objet et principe du stockage"));
+    contenu.push(corps("Ce rapport compare plusieurs capacités de batterie pour répondre à une question précise : faut-il stocker son surplus solaire plutôt que de le revendre ? Le mécanisme est un arbitrage de prix. Aujourd'hui, le surplus part au réseau et est racheté à un tarif bas ; le soir venu, l'électricité est rachetée à un tarif plus élevé. La batterie capture cet écart."));
+    contenu.push(corps("La conséquence est contre-intuitive mais déterminante : ce n'est pas le prix de l'électricité qui fait la rentabilité d'une batterie, mais l'écart entre achat et revente. Un tarif de rachat généreux rend le stockage moins intéressant ; un surplus cédé gratuitement le rend beaucoup plus attractif."));
+
+    /* ── 2. Synthèse ────────────────────────────────────────────────── */
+    contenu.push(titre2('2. Synthèse'));
+    [verdict, surEcart, surGisement].forEach(t => contenu.push(new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 20, color: ENCRE })],
+      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: 264 }
+    })));
+
+    /* ── 3. Paramètres ──────────────────────────────────────────────── */
+    contenu.push(titre2('3. Paramètres retenus'));
+    contenu.push(titre3('3.1 Installation et énergie'));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp('Production PV', nf(p.prod), 'kWh/an', 'Contexte — non calculé'),
+      lp('Consommation', nf(p.cons), 'kWh/an', 'Contexte — non calculé'),
+      lp('Injection réseau', nf(p.inj), 'kWh/an', 'Hypothèse projet')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('prod', 'cons', 'inj'));
+
+    contenu.push(titre3('3.2 Tarifs et hypothèses économiques'));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp("Prix d'achat", px4(p.achat), '€/kWh', 'Hypothèse'),
+      lp('Prix de revente', px4(p.vente), '€/kWh', 'Hypothèse'),
+      lp('Écart capturé par kWh stocké', px4(ecart), '€/kWh', 'Calculé'),
+      lp("Hausse annuelle du prix élec.", nf(p.hausse * 100, 1), '%/an', 'Hypothèse'),
+      lp("Taux d'actualisation", nf(p.tauxActu * 100, 1), '%', 'Hypothèse')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('achat', 'vente', 'hausse', 'tauxActu'));
+
+    contenu.push(titre3('3.3 Batterie'));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp('Coût batterie (réf. 13,5 kWh)', nf(p.cout), '€', 'Hypothèse'),
+      lp("Durée de vie / d'analyse", nf(p.duree), 'ans', 'Hypothèse'),
+      lp('Dégradation batterie', nf(p.degBat * 100, 2), '%/an', 'Hypothèse')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('cout', 'duree', 'degBat'));
+
+    contenu.push(new Paragraph({
+      children: [TXT('Statut des valeurs. ', { bold: true, color: ENCRE }),
+        TXT("Aucune valeur de ce simulateur n'est sourcée : toutes sont des hypothèses à caler sur vos relevés, votre contrat de rachat et un devis réel. Les deux premiers champs, production et consommation, servent uniquement de repère de saisie et n'entrent pas dans le calcul.")],
+      alignment: AlignmentType.JUSTIFIED, spacing: { before: 80, after: 120 },
+      shading: { type: ShadingType.CLEAR, fill: 'FFF8E1' },
+      border: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre }
+    }));
+
+    /* ── 4. Comparatif des capacités ────────────────────────────────── */
+    contenu.push(new Paragraph({ children: [new PageBreak()] }));
+    contenu.push(titre2('4. Comparatif des capacités'));
+    contenu.push(corps("Les cinq capacités ci-dessous partagent le même gisement stockable et les mêmes prix : seuls changent le coût d'acquisition et l'énergie que la batterie parvient à absorber au fil de l'année. La ligne mise en évidence est celle dont la valeur actuelle nette est la plus élevée — et non celle qui stocke le plus."));
+    contenu.push(table(['Batterie', 'Coût', 'kWh valorisés/an', 'Gain année 1', 'Gain cumulé', 'ROI', 'VAN'],
+      D.capacites.map(c => ({ fort: c.meilleure, cells: [
+        cf(nf(c.cap, 1) + ' kWh', { bold: !!c.meilleure }), cv(eur(c.cout)), cv(nf(c.recup)),
+        cv(eur(c.gain1)), cv(eur(c.cumul)), cv(c.roi === null ? 'Non atteint' : c.roi + ' ans'), cv(eur(c.van))
+      ]})),
+      [1500, 1400, 1900, 1500, 1500, 1400, 1300]));
+    contenu.push(...graphe(D.graphes.gain, "Gain cumulé de chaque capacité, hors coût d'acquisition de la batterie. Les courbes ne se croisent pas : le classement se joue sur le coût, donc le retour sur investissement se lit dans le tableau, pas sur ce graphique."));
+
+    /* ── 5. Résultats de la capacité conseillée ─────────────────────── */
+    contenu.push(titre2('5. Résultats de la capacité conseillée'));
+    const ligRes = [
+      ['Capacité conseillée', nf(B.cap, 1) + ' kWh', true],
+      ["Coût d'acquisition", eur(B.cout)],
+      ['Énergie valorisée (an 1)', kwh(B.recup)],
+      ['Part du surplus valorisée', pct(p.inj > 0 ? B.recup / p.inj * 100 : 0)],
+      ['Gain année 1', eur(B.gain1), true],
+      ['Gain cumulé sur la durée', eur(B.cumul)],
+      ['Retour sur investissement', B.roi === null ? 'Non atteint' : B.roi + ' ans', true],
+      ['Valeur actuelle nette', eur(B.van), true]
+    ].map(([lib, val, fort]) => ({ fort, cells: [cf(lib, { bold: !!fort }), cv(val)] }));
+    contenu.push(table(['Indicateur', 'Valeur'], ligRes, [6560, 2800]));
+
+    contenu.push(titre3('5.1 Comment lire chaque indicateur'));
+    [['Capacité conseillée', " — le meilleur compromis entre énergie captée et investissement, au sens de la valeur actuelle nette. Ce n'est pas la capacité qui stocke le plus."],
+     ['Énergie valorisée', " — les kilowattheures réellement détournés du réseau la première année. Ils sont bornés à la fois par l'injection disponible et par ce que la batterie peut absorber."],
+     ['Gain année 1', " — l'énergie valorisée multipliée par l'écart entre prix d'achat et prix de revente."],
+     ['Retour sur investissement', " — première année où le gain cumulé dépasse le coût de la batterie. « Non atteint » signifie que cela ne survient jamais dans la durée retenue, ce qui est en soi une réponse."],
+     ['Valeur actuelle nette', " — valeur créée, actualisée, nette du coût de la batterie. Négative, la batterie coûte plus qu'elle ne rapporte."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+
+    /* ── 6. Formules et paliers ─────────────────────────────────────── */
+    contenu.push(titre2('6. Formules et paliers de valorisation'));
+    [ 'kWh valorisés = min( injection réseau , plafond du palier de capacité )',
+      'Énergie(t) = kWh valorisés × (1 − dégradation)^(t−1)',
+      'Prix achat(t) = prix achat × (1 + hausse)^(t−1)',
+      'Gain(t) = Énergie(t) × ( Prix achat(t) − prix de revente )',
+      "VAN = −Coût batterie + Σ Gain(t) / (1 + taux d'actualisation)^t",
+      'ROI = première année où Σ Gain ≥ coût de la batterie'
+    ].forEach(f => contenu.push(formule(f)));
+    contenu.push(corps("Les paliers de valorisation plafonnent l'énergie qu'une capacité donnée peut absorber dans l'année, indépendamment de l'injection disponible :"));
+    contenu.push(table(['Capacité', "Plafond d'énergie valorisable"],
+      D.paliers.map(x => ({ cells: [cf(x.libelle), cv(nf(x.plafond) + ' kWh/an')] })),
+      [4680, 4680]));
+    contenu.push(corps("Ces paliers traduisent le fait qu'une batterie ne réalise qu'un cycle utile par jour environ, et qu'elle ne peut pas absorber tout le surplus d'une journée d'été. Ils constituent des hypothèses à valider : si vous disposez d'une simulation horaire ou de données de terrain, ils doivent être remplacés par vos propres valeurs."));
+
+    /* ── 7. Limites ─────────────────────────────────────────────────── */
+    contenu.push(new Paragraph({ children: [new PageBreak()] }));
+    contenu.push(titre2('7. Limites du modèle'));
+    [["Les champs « Production PV » et « Consommation » ne sont pas utilisés dans le calcul.", " Ils servent uniquement de repère de saisie ; seule l'injection réseau pilote le résultat."],
+     ['Le coût au prorata est linéaire.', " Dans la réalité, le coût au kWh décroît avec la capacité et une part du prix est fixe — onduleur hybride, pose, pilotage. Le comparatif défavorise donc légèrement les grandes capacités."],
+     ['Aucun rendement de charge et décharge.', " Une batterie lithium restitue environ 85 à 92 % de l'énergie stockée. Le modèle suppose 100 %, ce qui surestime le gain d'environ 10 %."],
+     ['Aucun remplacement de batterie', " ni coût de fin de vie sur la durée retenue."],
+     ["Le prix de revente n'est pas indexé", ", alors que le prix d'achat l'est. C'est une hypothèse implicitement favorable à la batterie."],
+     ['Raisonnement annuel', ", sans courbe de charge : les paliers remplacent une simulation au pas horaire."],
+     ['Aucun autre revenu', " : ni effacement, ni participation à un mécanisme de flexibilité, ni secours en cas de coupure — un service qui a de la valeur mais ne se chiffre pas ici."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+
+    /* ── 8. Suites ──────────────────────────────────────────────────── */
+    contenu.push(titre2('8. Refaire ou ajuster cette simulation'));
+    contenu.push(corps("Ce rapport est produit par le simulateur de stockage de Soleil Beaujolais, un fichier HTML autonome qui s'ouvre dans n'importe quel navigateur. La marche à suivre pour produire une nouvelle version :"));
+    ["Saisir l'injection réseau réelle : c'est le seul paramètre énergétique qui pilote le calcul. Relever l'index d'injection du compteur ou la facture de revente.",
+     "Renseigner les deux prix — achat et revente — d'après la facture et le contrat d'achat en vigueur.",
+     "Caler le coût sur un devis réel, ramené à la référence de 13,5 kWh. Exemple : 4 000 € pour 10 kWh donnent 4 000 × 13,5 / 10 = 5 400 € à saisir.",
+     "Corriger la durée de vie et la dégradation. Les valeurs par défaut, 20 ans et 1 %/an, sont favorables : refaire le calcul avec 12 ans et 3 %/an pour une lecture prudente. L'écart entre les deux scénarios est souvent plus instructif que le résultat lui-même."
+    ].forEach((t, i) => contenu.push(puce([TXT(`${i + 1}. `, { bold: true }), TXT(t)])));
+    contenu.push(corps([
+      TXT('Manuel complet. ', { bold: true }),
+      TXT("Chaque paramètre dispose dans le simulateur d'un lien d'aide qui ouvre le manuel d'utilisation à la fiche correspondante. Les explications reprises dans ce rapport en sont extraites : les deux documents disent la même chose.")
+    ]));
+
+    /* ── Document ───────────────────────────────────────────────────── */
+    const doc = new Document({
+      creator: 'Soleil Beaujolais',
+      title: 'Rapport de simulation — Stockage par batteries',
+      description: "Rapport produit par le simulateur stockage par batteries de Soleil Beaujolais",
+      styles: { default: { document: { run: { font: POLICE, size: 20 } } } },
+      sections: [{
+        properties: { page: { margin: {
+          top: 2120,      // 3,74 cm : dégage le titre courant agrandi
+          right: 740, left: 740,
+          bottom: 1240,   // 2,19 cm : place pour les deux lignes du pied
+          header: 397,    // 0,70 cm du bord haut
+          footer: 397     // 0,70 cm du bord bas
+        } } },
+        headers: { default: new Header({ children: [
+          new Table({
+            columnWidths: [1080, 4546, 4800],
+            width: { size: LARGEUR_TEXTE, type: WidthType.DXA },
+            borders: {
+              top: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.SINGLE, size: 14, color: ENCRE }
+            },
+            rows: [new TableRow({ children: [
+              new TableCell({
+                width: { size: 1080, type: WidthType.DXA }, verticalAlign: 'center',
+                margins: { top: 40, bottom: 80, left: 0, right: 60 },
+                children: [new Paragraph({ children: [
+                  new ImageRun({ type: 'png', data: LOGO, transformation: { width: 54, height: 54 } })
+                ]})]
+              }),
+              new TableCell({
+                width: { size: 4546, type: WidthType.DXA }, verticalAlign: 'center',
+                margins: { top: 40, bottom: 80 },
+                children: [
+                  new Paragraph({ spacing: { after: 0 }, alignment: AlignmentType.CENTER, children: [
+                    new TextRun({ text: 'SOLEIL BEAUJOLAIS', font: POLICE, size: 28, bold: true, italics: true, color: ENCRE })
+                  ]}),
+                  new Paragraph({ spacing: { after: 0 }, alignment: AlignmentType.CENTER, children: [
+                    new TextRun({ text: 'Stockage par batteries', font: POLICE, size: 28, bold: true, italics: true, color: ENCRE })
+                  ]})
+                ]
+              }),
+              new TableCell({
+                width: { size: 4800, type: WidthType.DXA }, verticalAlign: 'center',
+                margins: { top: 40, bottom: 80 },
+                children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [
+                  new ImageRun({ type: 'jpg', data: BANNIERE, transformation: { width: 236, height: 60 } })
+                ]})]
+              })
+            ]})]
+          })
+        ]})},
+        footers: { default: new Footer({ children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 6, color: ENCRE, space: 6 } }, children: [
+            new TextRun({ text: 'Soleil Beaujolais — Énergie citoyenne en Beaujolais · soleilbeaujolais.fr', font: POLICE, size: 22, bold: true, color: GRIS })
+          ]}),
+          new Paragraph({
+            spacing: { before: 40 },
+            tabStops: [{ type: TabStopType.RIGHT, position: LARGEUR_TEXTE }],
+            children: [
+              new TextRun({ text: dateFr, font: POLICE, size: 22, color: GRIS }),
+              new TextRun({ children: [new Tab()] }),
+              new TextRun({ children: [PageNumber.CURRENT], font: POLICE, size: 22, color: GRIS }),
+              new TextRun({ text: ' / ', font: POLICE, size: 22, color: GRIS }),
+              new TextRun({ children: [PageNumber.TOTAL_PAGES], font: POLICE, size: 22, color: GRIS })
+            ]
+          })
+        ]})},
+        children: contenu
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const nom = 'Rapport_Batterie_' + new Date().toISOString().slice(0, 10) + '.docx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nom; document.body.appendChild(a); a.click();
+    a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch(e){
+    alert("Le rapport Word n'a pas pu être produit : " + e.message
+        + "\n\nUne connexion est nécessaire au premier téléchargement.");
+    console.error(e);
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = libelle; }
+  }
 }
 
 /* ── Recalcul automatique + lancement initial ───────────────────── */
