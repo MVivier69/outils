@@ -591,6 +591,7 @@ button.del:hover{color:var(--bad);border-color:var(--bad)}
   <div class="actions">
     <button class="run" onclick="simuler()">Lancer la simulation</button>
     <button class="print" onclick="imprimerRapport()">Imprimer le rapport</button>
+    <button class="print" onclick="telechargerRapportWord(this)">Télécharger en Word</button>
     <span class="live">Recalcul automatique à chaque modification.</span>
   </div>
 
@@ -1515,6 +1516,592 @@ gouvernance, que le calcul éclaire sans les trancher.</li>
 </div>`;
 
   window.print();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EXPORT WORD — génération du rapport .docx dans le navigateur
+   Le corps du générateur est identique à celui utilisé hors ligne :
+   même charte, même contenu, mêmes fiches issues du manuel.
+   La bibliothèque docx (~760 Ko) n'est chargée qu'au premier clic.
+   ════════════════════════════════════════════════════════════════ */
+const FICHES = {"puissanceKwc": {"nom": "Puissance installée", "unite": "kWc", "statut": "Hypothèse projet", "quoi": [{"t": "La puissance crête cumulée de l'ensemble des installations participant à l'opération.", "b": false, "i": false, "c": false}], "regler": [{"t": "Reprenez le devis. Contrainte réglementaire : la puissance cumulée d'une opération étendue doit rester ", "b": false, "i": false, "c": false}, {"t": "inférieure à 5 MW", "b": true, "i": false, "c": false}, {"t": ", seuil porté jusqu'à 10 MW pour certaines opérations à l'échelle d'un EPCI. Second seuil, fiscal celui-là : ", "b": false, "i": false, "c": false}, {"t": "1 MWc", "b": true, "i": false, "c": false}, {"t": ", au-delà duquel le tarif d'accise à 0 €/MWh ne s'applique plus.", "b": false, "i": false, "c": false}], "effet": [{"t": "Augmente la production, donc les recettes — mais au-delà de la capacité d'absorption des participants, chaque kWc supplémentaire ne fait que gonfler le surplus, valorisé bien moins cher. Comparez toujours la production affichée au total des capacités d'absorption.", "b": false, "i": false, "c": false}]}, "productible": {"nom": "Productible", "unite": "kWh/kWc/an", "statut": "Sourcé — PVGIS", "quoi": [{"t": "L'énergie produite annuellement par kWc installé, intégrant ensoleillement, orientation, inclinaison et pertes.", "b": false, "i": false, "c": false}], "regler": [{"t": "PVGIS ou la carte de productible de photovoltaique.info, à l'adresse du site de production. Environ 1 150 à 1 250 dans la vallée du Rhône.", "b": false, "i": false, "c": false}], "effet": [{"t": "Proportionnel à la production totale de l'opération.", "b": false, "i": false, "c": false}]}, "investissement": {"nom": "Investissement", "unite": "€", "statut": "Hypothèse projet", "quoi": [{"t": "Le coût complet du projet : matériel, pose, raccordement, études de faisabilité, frais juridiques de constitution de la PMO.", "b": false, "i": false, "c": false}], "regler": [{"t": "Devis, en n'oubliant pas les postes spécifiques à l'ACC — étude de faisabilité, montage juridique, convention avec le gestionnaire de réseau — qui pèsent proportionnellement plus lourd sur les petites opérations.", "b": false, "i": false, "c": false}], "effet": [{"t": "Point de départ de la courbe de trésorerie du producteur. Premier déterminant du temps de retour.", "b": false, "i": false, "c": false}]}, "subvention": {"nom": "Subventions / apports", "unite": "€", "statut": "Hypothèse projet", "quoi": [{"t": "Les aides déduites de l'investissement : appels à projets régionaux, aides ADEME, apports citoyens non rémunérés, fonds propres d'une collectivité.", "b": false, "i": false, "c": false}], "regler": [{"t": "Montant notifié. ", "b": false, "i": false, "c": false}, {"t": "Point de vigilance", "b": true, "i": false, "c": false}, {"t": " : les aides ne sont pas cumulables entre elles dans tous les cas, et bénéficier de l'arrêté tarifaire implique de renoncer aux aides à l'investissement sur la production. Vérifiez la compatibilité avant de cumuler.", "b": false, "i": false, "c": false}], "effet": [{"t": "Réduit d'autant l'investissement net. Avec les valeurs par défaut, ramener ce champ à 0 fait basculer la VAN nettement en négatif — ce qui illustre la dépendance historique de l'ACC au soutien public.", "b": false, "i": false, "c": false}]}, "prixReseau": {"nom": "Prix réseau évité (an 0)", "unite": "€/kWh", "statut": "Sourcé — TRV", "quoi": [{"t": "Le prix que les consommateurs paient aujourd'hui sans ACC. C'est la référence contre laquelle se mesure leur économie.", "b": false, "i": false, "c": false}], "regler": [{"t": "Part variable TTC de la facture. La valeur par défaut correspond au tarif réglementé « Bleu » EDF, option Base, 3–6 kVA, en vigueur depuis le 1er février 2026. ", "b": false, "i": false, "c": false}, {"t": "Attention", "b": true, "i": false, "c": false}, {"t": " : les participants non résidentiels ont le plus souvent des tarifs différenciés sur quatre plages temporelles (heures pleines / creuses, été / hiver). Une valeur unique est une simplification.", "b": false, "i": false, "c": false}], "effet": [{"t": "Plafond du gain consommateur. Tout l'équilibre de l'opération se joue dans l'espace entre ce prix et la somme « prix ACC + acheminement ».", "b": false, "i": false, "c": false}]}, "prixACC": {"nom": "Prix de vente ACC (part fourniture)", "unite": "€/kWh", "statut": "Hypothèse — décision PMO", "quoi": [{"t": "Le prix auquel le producteur vend le kilowattheure partagé aux consommateurs de l'opération. C'est la ", "b": false, "i": false, "c": false}, {"t": "variable de décision centrale", "b": true, "i": false, "c": false}, {"t": " de la PMO.", "b": false, "i": false, "c": false}], "regler": [{"t": "C'est un arbitrage politique autant qu'économique : il doit rentabiliser l'installation tout en restant attractif face aux offres classiques. Son intérêt majeur pour les consommateurs n'est pas seulement d'être plus bas, mais d'être ", "b": false, "i": false, "c": false}, {"t": "fixé sur plusieurs années", "b": true, "i": false, "c": false}, {"t": ", donc moins exposé aux aléas du marché.", "b": false, "i": false, "c": false}], "effet": [{"t": "Jeu à somme nulle entre producteur et consommateurs : ce que l'un gagne, l'autre le perd. Le simulateur affiche les deux côtés simultanément, précisément pour rendre cet arbitrage visible. Montez-le progressivement et observez le moment où l'économie consommateur devient négative — c'est la limite haute acceptable.", "b": false, "i": false, "c": false}]}, "acheminement": {"nom": "Réseau et taxes sur kWh ACC", "unite": "€/kWh", "statut": "Hypothèse à vérifier", "quoi": [{"t": "Ce que le consommateur continue de payer, en plus du prix ACC, sur chaque kilowattheure affecté : le TURPE et la TVA correspondante.", "b": false, "i": false, "c": false}], "regler": [{"t": "Le TURPE est systématiquement prélevé sur tout kWh soutiré", "b": true, "i": false, "c": false}, {"t": ", y compris les kWh affectés en ACC — même si l'électricité était cédée gratuitement. En revanche, l'accise bénéficie d'un tarif particulier à 0 €/MWh sous conditions (voir la section « Cadre réglementaire »). La valeur par défaut est un ordre de grandeur pour un client BT ≤ 36 kVA, à confirmer auprès du fournisseur.", "b": false, "i": false, "c": false}], "effet": [{"t": "Se retranche directement de l'économie consommateur. C'est ce poste qui explique pourquoi la marge de manœuvre d'une opération ACC est étroite : sur 0,1940 €/kWh évités, seuls 0,1400 environ restent à partager.", "b": false, "i": false, "c": false}]}, "prixSurplus": {"nom": "Valorisation du surplus collectif", "unite": "€/kWh", "statut": "Hypothèse à vérifier", "quoi": [{"t": "Le tarif auquel est valorisée la production qui n'a été affectée à aucun consommateur, à chaque pas de mesure.", "b": false, "i": false, "c": false}], "regler": [{"t": "Ce surplus peut être vendu — sous obligation d'achat ou en contrat de gré à gré — ou cédé sans rémunération au gestionnaire de réseau. Vérifiez le tarif applicable dans l'arrêté tarifaire en vigueur, en gardant à l'esprit qu'en bénéficier implique de renoncer aux aides à l'investissement. Saisissez 0 si le surplus est cédé gratuitement.", "b": false, "i": false, "c": false}], "effet": [{"t": "Détermine le coût d'opportunité d'une mauvaise clé de répartition. Plus l'écart avec le prix ACC est grand, plus le choix du mode d'affectation pèse — c'est le ressort de la section « Comparaison des clés ».", "b": false, "i": false, "c": false}]}, "fraisPMO": {"nom": "Frais de PMO / gestion", "unite": "€/an", "statut": "Hypothèse", "quoi": [{"t": "Le coût de fonctionnement de la personne morale organisatrice : animation, facturation des participants, plateforme de calcul et de suivi de la répartition, comptabilité, assurance.", "b": false, "i": false, "c": false}], "regler": [{"t": "Très variable selon que la PMO est bénévole (association, collectif citoyen) ou qu'elle délègue à un prestataire. Les offres de plateformes du marché se facturent souvent à l'abonnement, parfois indexées au nombre de participants.", "b": false, "i": false, "c": false}], "effet": [{"t": "Charge fixe, donc ", "b": false, "i": false, "c": false}, {"t": "d'autant plus lourde que l'opération est petite", "b": true, "i": false, "c": false}, {"t": ". C'est l'une des raisons pour lesquelles les très petites ACC peinent à s'équilibrer.", "b": false, "i": false, "c": false}]}, "compGestion": {"nom": "Composante de gestion majorée", "unite": "€/an et par participant", "statut": "Hypothèse à vérifier", "quoi": [{"t": "Le surcoût TURPE facturé par le gestionnaire de réseau pour l'affectation des index toutes les 15 minutes. Il s'applique à ", "b": false, "i": false, "c": false}, {"t": "tous les participants", "b": true, "i": false, "c": false}, {"t": ", producteurs comme consommateurs, et quel que soit le type d'opération.", "b": false, "i": false, "c": false}], "regler": [{"t": "Les montants dépendent du segment de puissance ; consultez les grilles TURPE en vigueur. Le simulateur multiplie ce montant par le nombre de participants plus un, pour compter le producteur.", "b": false, "i": false, "c": false}], "effet": [{"t": "Croît avec le nombre de participants. Une opération à trente foyers supporte ici trente fois cette charge, ce qui pèse contre l'idée intuitive selon laquelle « plus on est nombreux, mieux c'est ».", "b": false, "i": false, "c": false}]}, "maintenance": {"nom": "Exploitation et maintenance", "unite": "€/an", "statut": "Hypothèse", "quoi": [{"t": "L'entretien technique de l'installation : maintenance préventive, assurance, supervision de production, provision pour remplacement d'onduleur.", "b": false, "i": false, "c": false}], "regler": [{"t": "Ordre de grandeur courant : 15 à 25 €/kWc/an pour une installation de cette taille.", "b": false, "i": false, "c": false}], "effet": [{"t": "Charge annuelle récurrente qui se déduit des recettes.", "b": false, "i": false, "c": false}]}, "inflationReseau": {"nom": "Hausse du prix réseau", "unite": "%/an", "statut": "Hypothèse", "quoi": [{"t": "L'indexation annuelle du prix évité, c'est-à-dire de la référence contre laquelle les consommateurs se comparent.", "b": false, "i": false, "c": false}], "regler": [{"t": "Hypothèse. Testez 0 %, 2 % et 5 %.", "b": false, "i": false, "c": false}], "effet": [{"t": "Améliore l'économie des consommateurs année après année, ", "b": false, "i": false, "c": false}, {"t": "si", "b": true, "i": false, "c": false}, {"t": " le prix ACC est indexé moins vite. L'écart entre ce paramètre et le suivant constitue le véritable argument commercial de l'opération.", "b": false, "i": false, "c": false}]}, "indexACC": {"nom": "Indexation du prix ACC", "unite": "%/an", "statut": "Hypothèse — décision PMO", "quoi": [{"t": "L'indexation annuelle du prix de vente ACC, généralement fixée par contrat sur plusieurs années.", "b": false, "i": false, "c": false}], "regler": [{"t": "Souvent calée sur l'inflation générale, ou volontairement inférieure à la dérive attendue des prix de l'électricité — c'est ce différentiel qui constitue la promesse faite aux participants.", "b": false, "i": false, "c": false}], "effet": [{"t": "Si l'indexation ACC égale la hausse réseau, l'avantage consommateur reste constant en valeur. Si elle est inférieure, l'avantage s'élargit avec le temps — au détriment des recettes du producteur.", "b": false, "i": false, "c": false}]}, "degradation": {"nom": "Dégradation des panneaux", "unite": "%/an", "statut": "Hypothèse", "quoi": [{"t": "La perte de rendement annuelle des modules.", "b": false, "i": false, "c": false}], "regler": [{"t": "Fiche technique du module : 0,4 à 0,55 %/an pour du silicium cristallin récent.", "b": false, "i": false, "c": false}], "effet": [{"t": "Réduit progressivement la production, donc l'énergie affectée et les recettes.", "b": false, "i": false, "c": false}]}, "duree": {"nom": "Durée d'analyse", "unite": "ans", "statut": "Hypothèse", "quoi": [{"t": "L'horizon du calcul.", "b": false, "i": false, "c": false}], "regler": [{"t": "Généralement alignée sur la durée de vie des modules. À rapprocher toutefois de la durée des conventions signées avec les participants, souvent bien plus courte — un point de fragilité propre à l'ACC.", "b": false, "i": false, "c": false}], "effet": [{"t": "Allonger la durée améliore la VAN, mais suppose que les participants restent engagés, ce qui n'est jamais garanti sur 25 ans.", "b": false, "i": false, "c": false}]}, "tauxActualisation": {"nom": "Taux d'actualisation", "unite": "%", "statut": "Hypothèse", "quoi": [{"t": "Le taux ramenant les flux futurs à leur valeur présente, pour la VAN, et servant de seuil au TRI.", "b": false, "i": false, "c": false}], "regler": [{"t": "Coût du financement pour une société de projet, taux sans risque pour une collectivité ou un collectif citoyen.", "b": false, "i": false, "c": false}], "effet": [{"t": "Un taux élevé pénalise fortement les projets à retour long, ce qui est le cas de la plupart des opérations ACC.", "b": false, "i": false, "c": false}]}};
+
+let docxPret = null;
+function chargerDocx(){
+  if (docxPret) return docxPret;
+  docxPret = new Promise((resolve, reject) => {
+    if (window.docx) return resolve(window.docx);
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/docx@9/build/index.umd.js';
+    sc.onload  = () => window.docx ? resolve(window.docx)
+                                   : reject(new Error('bibliothèque docx illisible'));
+    sc.onerror = () => reject(new Error('téléchargement de la bibliothèque docx impossible'));
+    document.head.appendChild(sc);
+  });
+  return docxPret;
+}
+
+/* base64 → Uint8Array (ImageRun attend des octets) */
+function b64Octets(dataUrl){
+  const b = atob(String(dataUrl).split(',')[1]);
+  const u = new Uint8Array(b.length);
+  for (let k = 0; k < b.length; k++) u[k] = b.charCodeAt(k);
+  return u;
+}
+
+/* Canvas Chart.js recomposé sur fond blanc, en octets PNG */
+function grapheOctets(c){
+  if (!c) return null;
+  const src = c.canvas, t = document.createElement('canvas');
+  t.width = src.width; t.height = src.height;
+  const g = t.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height);
+  g.drawImage(src, 0, 0);
+  return t.toDataURL('image/png');
+}
+
+/* Collecte de l'état courant, au format attendu par le générateur */
+function collecterDonnees(){
+  const d = DERNIER, p = d.p, caps = capacites();
+  return {
+    params: p,
+    investNet: Math.max(0, p.investissement - p.subvention),
+    margeUnit: p.prixReseau - p.prixACC - p.acheminement,
+    chargesAn: p.maintenance + p.fraisPMO + p.compGestion * (participants.length + 1),
+    modeActif: MODE_ACTIF,
+    modeNoms: Object.fromEntries(Object.keys(MODES).map(k => [k, MODES[k].nom])),
+    participants: participants.map((x, i) => ({
+      rang: i + 1, nom: x.nom, conso: +x.conso || 0,
+      cle: +x.cle || 0, simul: +x.simul || 0, cap: caps[i]
+    })),
+    totaux: {
+      conso: d.consoTot, cap: d.capTot,
+      cle: participants.reduce((s, x) => s + (+x.cle || 0), 0)
+    },
+    resultats: {
+      prodAn1: d.prodAn1, accAn1: d.accAn1, surplusAn1: d.r.rows[0].surplus,
+      tauxACC: d.tauxACC, couverture: d.couverture,
+      recettesAn1: d.r.rows[0].recettes, netAn1: d.r.rows[0].net,
+      van: d.r.van, tri: d.r.tri, retourBrut: d.r.retourBrut, retourAct: d.r.retourAct,
+      gainConsoAn1: d.r.gains[0], gainConsoCumul: d.r.cumulConso[d.r.cumulConso.length - 1]
+    },
+    bilan: d.r.detailAn1.map(x => ({
+      nom: x.nom, conso: x.conso, cap: x.cap, energie: x.energie,
+      part: x.part, couverture: x.conso > 0 ? x.energie / x.conso * 100 : 0, gain: x.gain
+    })),
+    modes: Object.keys(MODES).map(k => {
+      const m = d.comp[k], r0 = m.rows[0];
+      return {cle: k, nom: MODES[k].nom, actif: k === MODE_ACTIF,
+              energie: r0.energieACC, taux: r0.prod > 0 ? r0.energieACC / r0.prod * 100 : 0,
+              surplus: r0.surplus, recettes: r0.recettes, gain: m.gains[0], van: m.van};
+    }),
+    meilleur: d.best, ecart: d.ecart, ecartVan: d.ecartVan,
+    annees: d.r.rows.map(r => ({
+      t: r.t, prod: r.prod, acc: r.energieACC, surplus: r.surplus,
+      recettes: r.recettes, net: r.net, cumul: d.r.cumul[r.t], gain: d.r.gains[r.t - 1]
+    })),
+    graphes: {
+      tresorerie:   grapheOctets(typeof chart !== 'undefined' ? chart : null),
+      modes:        grapheOctets(typeof chartModes !== 'undefined' ? chartModes : null),
+      participants: grapheOctets(typeof chartPart !== 'undefined' ? chartPart : null)
+    }
+  };
+}
+
+async function telechargerRapportWord(btn){
+  const libelle = btn ? btn.textContent : null;
+  try{
+    if (btn){ btn.disabled = true; btn.textContent = 'Préparation…'; }
+    simuler();
+    if (!DERNIER) throw new Error('aucune simulation disponible');
+
+    const docx = await chargerDocx();
+    const {
+      Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
+      Table, TableRow, TableCell, WidthType, ShadingType, BorderStyle,
+      ImageRun, PageBreak, Footer
+    } = docx;
+
+    const D = collecterDonnees();
+    const LOGO = b64Octets(LOGO_SB);
+    const img64 = s => b64Octets(s);
+
+    /* ── Charte du modèle Word « Watts News » ───────────────────────── */
+    const ENCRE = '0F4761';       // bleu-pétrole des titres
+    const FOND  = 'DEEBF7';       // trame claire des encadrés
+    const GRIS  = '595959';
+    const TRAIT = '9DB8C9';
+    const POLICE = 'Arial';
+    const LARGEUR = 9360;         // largeur utile en DXA (A4, marges 13 mm)
+
+    /* ── Mise en forme ──────────────────────────────────────────────── */
+    // VAR : donnée variable, surlignée en jaune pour être repérée et modifiée
+    const VAR = (t) => new TextRun({ text: String(t), font: POLICE, size: 18, bold: true, highlight: 'yellow' });
+    const TXT = (t, o = {}) => new TextRun({ text: String(t), font: POLICE, size: 18, ...o });
+    const P = (children, o = {}) => new Paragraph({ children, spacing: { after: 80 }, ...o });
+    const corps = (t, o = {}) => new Paragraph({
+      children: Array.isArray(t) ? t : [new TextRun({ text: t, font: POLICE, size: 20 })],
+      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: 264 }, ...o
+    });
+    const titre2 = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 22, bold: true, color: ENCRE })],
+      spacing: { before: 260, after: 100 }, heading: HeadingLevel.HEADING_2
+    });
+    const titre3 = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 20, bold: true, color: ENCRE })],
+      spacing: { before: 160, after: 70 }, heading: HeadingLevel.HEADING_3
+    });
+    const puce = (t) => new Paragraph({
+      children: Array.isArray(t) ? t : [new TextRun({ text: t, font: POLICE, size: 20 })],
+      bullet: { level: 0 }, alignment: AlignmentType.JUSTIFIED, spacing: { after: 70 }
+    });
+    const formule = (t) => new Paragraph({
+      children: [new TextRun({ text: t, font: 'Consolas', size: 17 })],
+      spacing: { after: 40 }, shading: { type: ShadingType.CLEAR, fill: 'F4F9FC' },
+      border: { left: { style: BorderStyle.SINGLE, size: 12, color: ENCRE, space: 4 } }
+    });
+
+    /* ── Nombres au format français ─────────────────────────────────── */
+    const nf = (n, dec = 0) => Number(n).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const eur = n => nf(Math.round(n)) + ' €';
+    const kwh = n => nf(Math.round(n)) + ' kWh';
+    const pct = (n, dec = 1) => nf(n, dec) + ' %';
+    const px4 = n => nf(n, 4);
+    const ans = v => v === null ? 'Non atteint' : nf(v, 1) + ' ans';
+
+    /* ── Tableaux ───────────────────────────────────────────────────── */
+    function cell(children, { w, fill, align, span } = {}) {
+      return new TableCell({
+        width: { size: w, type: WidthType.DXA },
+        columnSpan: span,
+        shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
+        margins: { top: 40, bottom: 40, left: 80, right: 80 },
+        children: [new Paragraph({
+          children, spacing: { after: 0 },
+          alignment: align || AlignmentType.RIGHT
+        })]
+      });
+    }
+    function table(entetes, lignes, cols) {
+      const bord = { style: BorderStyle.SINGLE, size: 4, color: TRAIT };
+      const head = new TableRow({
+        tableHeader: true,
+        children: entetes.map((h, i) => cell(
+          [new TextRun({ text: h, font: POLICE, size: 17, bold: true, color: ENCRE })],
+          { w: cols[i], fill: FOND, align: i === 0 ? AlignmentType.LEFT : AlignmentType.RIGHT }
+        ))
+      });
+      const corpsRows = lignes.map((lg, n) => new TableRow({
+        children: lg.cells.map((c, i) => cell(c, {
+          w: cols[i],
+          fill: lg.fort ? FOND : (n % 2 ? 'F4F9FC' : undefined),
+          align: i === 0 ? AlignmentType.LEFT : AlignmentType.RIGHT
+        }))
+      }));
+      return new Table({
+        columnWidths: cols,
+        width: { size: LARGEUR, type: WidthType.DXA },
+        borders: { top: bord, bottom: bord, left: bord, right: bord, insideHorizontal: bord, insideVertical: bord },
+        rows: [head, ...corpsRows]
+      });
+    }
+    // ligne de paramètre : le libellé est fixe, la valeur est variable (surlignée)
+    const lp = (lib, val, unite, statut) => ({ cells: [
+      [TXT(lib, { size: 17 })],
+      [new TextRun({ text: String(val), font: POLICE, size: 17, bold: true, highlight: 'yellow' })],
+      [TXT(unite, { size: 17 })],
+      [TXT(statut, { size: 17, bold: true, color: statut.startsWith('Sourc') ? '1F7A3D' : (statut === 'Calculé' ? GRIS : '9C5A00') })]
+    ]});
+    // cellule de donnée variable dans un tableau de résultats
+    const cv = (t) => [new TextRun({ text: String(t), font: POLICE, size: 17, bold: true, highlight: 'yellow' })];
+    const cf = (t, o = {}) => [new TextRun({ text: String(t), font: POLICE, size: 17, ...o })];
+
+    /* ── Fiches explicatives reprises du manuel d'utilisation ───────── */
+    // Les segments proviennent du manuel : texte STABLE, jamais surligné.
+    const seg = (arr, taille = 18) => arr.map(x => new TextRun({
+      text: x.t, font: x.c ? 'Consolas' : POLICE, size: x.c ? taille - 1 : taille,
+      bold: !!x.b, italics: !!x.i
+    }));
+
+    function fiche(id) {
+      const f = FICHES[id];
+      if (!f) return [];
+      const bloc = [];
+      bloc.push(new Paragraph({
+        spacing: { before: 120, after: 40 },
+        children: [
+          new TextRun({ text: f.nom, font: POLICE, size: 19, bold: true, color: ENCRE }),
+          new TextRun({ text: `  (${f.unite})`, font: POLICE, size: 17, color: GRIS }),
+          new TextRun({ text: `  ·  ${f.statut}`, font: POLICE, size: 16, bold: true,
+            color: f.statut.startsWith('Sourc') ? '1F7A3D' : '9C5A00' })
+        ]
+      }));
+      const item = (etiq, contenu) => new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 60 }, indent: { left: 220 },
+        children: [
+          new TextRun({ text: etiq + ' ', font: POLICE, size: 18, bold: true, color: GRIS }),
+          ...seg(contenu)
+        ]
+      });
+      bloc.push(item("Ce que c'est.", f.quoi));
+      bloc.push(item('Comment le régler.', f.regler));
+      bloc.push(item('Effet sur le résultat.', f.effet));
+      return bloc;
+    }
+    const fiches = (...ids) => ids.flatMap(fiche);
+
+    /* ════════════════════════════════════════════════════════════════
+       CONTENU
+       ════════════════════════════════════════════════════════════════ */
+    const p = D.params, R = D.resultats, M = D.modeNoms;
+    const dateFr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    /* Verdict rédigé à partir des résultats */
+    const viable = R.van >= 0, consoOk = R.gainConsoAn1 > 0;
+    const verdict = viable && consoOk
+      ? `Dans cette configuration, l'opération est équilibrée pour les deux parties : le producteur dégage une valeur actuelle nette de ${eur(R.van)} sur ${p.duree} ans, et les participants économisent ${eur(R.gainConsoAn1)} dès la première année.`
+      : viable && !consoOk
+      ? `L'opération est rentable pour le producteur (VAN de ${eur(R.van)}) mais défavorable aux consommateurs, qui paieraient plus cher qu'au réseau. Le prix de vente ACC de ${px4(p.prixACC)} €/kWh doit être abaissé.`
+      : !viable && consoOk
+      ? `L'opération profite aux consommateurs (${eur(R.gainConsoAn1)} d'économies la première année) mais ne rembourse pas l'investissement : la valeur actuelle nette du producteur s'établit à ${eur(R.van)}. Il faut soit relever le prix de vente, soit obtenir un soutien à l'investissement, soit réduire les charges de gestion.`
+      : `Dans cette configuration, aucune des deux parties n'y trouve son compte. Les paramètres doivent être revus avant d'envisager le projet.`;
+
+    const dimension = D.totaux.cap > 0 && R.prodAn1 > D.totaux.cap * 1.15
+      ? `L'installation produit ${kwh(R.prodAn1)} pour une capacité d'absorption collective de seulement ${kwh(D.totaux.cap)} : elle est surdimensionnée au regard des besoins simultanés du collectif. Une part importante de la production partira en surplus quelle que soit la clé retenue.`
+      : R.prodAn1 < D.totaux.cap * 0.6
+      ? `L'installation produit ${kwh(R.prodAn1)} pour une capacité d'absorption de ${kwh(D.totaux.cap)} : le collectif pourrait absorber bien davantage. Une puissance supérieure serait valorisable.`
+      : `Le rapport entre la production (${kwh(R.prodAn1)}) et la capacité d'absorption du collectif (${kwh(D.totaux.cap)}) est cohérent.`;
+
+    const cleTxt = D.ecart > 1
+      ? `Le mode « ${M[D.meilleur]} » affecterait ${kwh(D.ecart)} de plus par an que le mode retenu, soit ${eur(D.ecartVan)} de valeur actuelle nette supplémentaire. Cette énergie n'est pas perdue physiquement : elle bascule en surplus collectif, valorisé ${px4(p.prixSurplus)} €/kWh au lieu de ${px4(p.prixACC)} €/kWh.`
+      : `Le mode d'affectation retenu exploite déjà toute la capacité d'absorption disponible : aucune autre clé ne ferait mieux avec ces paramètres.`;
+
+    const contenu = [];
+
+    /* ── En-tête : logo + nom (sans slogan) ─────────────────────────── */
+    contenu.push(new Table({
+      columnWidths: [1100, 8260],
+      width: { size: LARGEUR, type: WidthType.DXA },
+      borders: {
+        top: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE },
+        right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE },
+        insideVertical: { style: BorderStyle.NONE },
+        bottom: { style: BorderStyle.SINGLE, size: 18, color: ENCRE }
+      },
+      rows: [new TableRow({ children: [
+        new TableCell({ width: { size: 1100, type: WidthType.DXA }, margins: { bottom: 80 }, children: [
+          new Paragraph({ children: [new ImageRun({ type: 'png', data: LOGO, transformation: { width: 58, height: 58 } })] })
+        ]}),
+        new TableCell({ width: { size: 8260, type: WidthType.DXA }, verticalAlign: 'center', margins: { bottom: 80 }, children: [
+          new Paragraph({ children: [new TextRun({ text: 'SOLEIL BEAUJOLAIS', font: POLICE, size: 34, bold: true, italics: true, color: ENCRE })] }),
+          new Paragraph({ children: [new TextRun({ text: 'Autoconsommation collective', font: POLICE, size: 22, bold: true, italics: true, color: ENCRE })] })
+        ]})
+      ]})]
+    }));
+    contenu.push(new Paragraph({ text: '', spacing: { after: 160 } }));
+
+    /* ── Cartouche de titre ─────────────────────────────────────────── */
+    const bordEncre = { style: BorderStyle.SINGLE, size: 12, color: ENCRE };
+    contenu.push(new Table({
+      columnWidths: [LARGEUR],
+      width: { size: LARGEUR, type: WidthType.DXA },
+      borders: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre },
+      rows: [new TableRow({ children: [new TableCell({
+        width: { size: LARGEUR, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: FOND },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+            new TextRun({ text: 'Rapport de simulation — Autoconsommation collective', font: POLICE, size: 26, bold: true })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+            VAR(`${D.participants.length} participants`), TXT(' · ', { bold: true }),
+            VAR(`${nf(p.puissanceKwc)} kWc`), TXT(' · ', { bold: true }),
+            TXT('mode ', { bold: true }), VAR(`« ${M[D.modeActif]} »`)
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [
+            TXT('Établi le ', { size: 17, color: GRIS }), new TextRun({ text: dateFr, font: POLICE, size: 17, color: GRIS, highlight: 'yellow' }),
+            TXT(' · horizon ', { size: 17, color: GRIS }), new TextRun({ text: `${p.duree} ans`, font: POLICE, size: 17, color: GRIS, highlight: 'yellow' }),
+            TXT(" · document d'estimation, sans valeur contractuelle", { size: 17, color: GRIS })
+          ]})
+        ]
+      })]})]
+    }));
+
+    /* ── Mode d'emploi du surlignage ────────────────────────────────── */
+    contenu.push(new Paragraph({ text: '', spacing: { after: 160 } }));
+    contenu.push(new Table({
+      columnWidths: [LARGEUR],
+      width: { size: LARGEUR, type: WidthType.DXA },
+      borders: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre },
+      rows: [new TableRow({ children: [new TableCell({
+        width: { size: LARGEUR, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: 'FFF8E1' },
+        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+        children: [new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [
+          TXT('Repérage des données variables. ', { bold: true, color: ENCRE }),
+          TXT("Toutes les valeurs issues de la simulation sont "),
+          new TextRun({ text: 'surlignées en jaune', font: POLICE, size: 18, bold: true, highlight: 'yellow' }),
+          TXT(". Le texte non surligné est stable d'une itération à l'autre. Pour mettre le rapport à jour, "),
+          TXT("il suffit donc de remplacer les seules zones surlignées. "),
+          TXT("Dans Word, Rechercher › Mise en forme › Surbrillance les liste toutes ; "),
+          TXT("le surlignage se retire ensuite d'un bloc via Accueil › Couleur de surbrillance › Aucune. "),
+          TXT("Les paragraphes explicatifs, repris du manuel d'utilisation, ne sont jamais surlignés : "),
+          TXT("ils restent valables quelles que soient les valeurs saisies.")
+        ]})]
+      })]})]
+    }));
+
+    /* ── 1. Objet ───────────────────────────────────────────────────── */
+    contenu.push(titre2("1. Objet et principe de l'opération"));
+    contenu.push(corps("L'autoconsommation collective, définie à l'article L. 315-2 du code de l'énergie, permet à plusieurs participants proches de partager localement une production renouvelable, au sein d'une personne morale organisatrice (PMO), via le réseau public de distribution. L'électricité ne circule pas dans des câbles dédiés : elle transite par le réseau, et le partage est une opération comptable. Le gestionnaire de réseau affecte, toutes les 15 minutes, une part de la production à chaque consommateur selon une clé de répartition transmise par la PMO."));
+    contenu.push(corps("Cette simulation modélise deux points de vue simultanément : celui du producteur, qui investit et perçoit des recettes, et celui des consommateurs, qui économisent sur leur facture. Ces deux intérêts s'opposent partiellement à travers le prix de vente ACC : ce que l'un gagne, l'autre le perd. Un projet n'est viable que si les deux colonnes sont acceptables."));
+
+    /* ── 2. Synthèse ────────────────────────────────────────────────── */
+    contenu.push(titre2('2. Synthèse'));
+    [verdict, dimension, cleTxt].forEach(t => contenu.push(new Paragraph({
+      children: [new TextRun({ text: t, font: POLICE, size: 20, color: ENCRE, highlight: 'yellow' })],
+      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: 264 }
+    })));
+
+    /* ── 3. Paramètres ──────────────────────────────────────────────── */
+    contenu.push(titre2('3. Paramètres retenus'));
+    contenu.push(titre3('3.1 Production et investissement'));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp('Puissance installée', nf(p.puissanceKwc), 'kWc', 'Hypothèse projet'),
+      lp('Productible', nf(p.productible), 'kWh/kWc/an', 'Sourcé — PVGIS'),
+      lp('Investissement', nf(p.investissement), '€', 'Hypothèse projet'),
+      lp('Subventions / apports', nf(p.subvention), '€', 'Hypothèse projet'),
+      lp('Investissement net', nf(D.investNet), '€', 'Calculé')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('puissanceKwc', 'productible', 'investissement', 'subvention'));
+
+    contenu.push(titre3("3.2 Prix de l'énergie"));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp('Prix réseau évité (an 0)', px4(p.prixReseau), '€/kWh', 'Sourcé — TRV'),
+      lp('Prix de vente ACC', px4(p.prixACC), '€/kWh', 'Hypothèse — PMO'),
+      lp('Réseau et taxes sur kWh ACC', px4(p.acheminement), '€/kWh', 'Hypothèse à vérifier'),
+      lp('Valorisation du surplus', px4(p.prixSurplus), '€/kWh', 'Hypothèse à vérifier'),
+      lp('Marge unitaire consommateur', px4(D.margeUnit), '€/kWh', 'Calculé')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('prixReseau', 'prixACC', 'acheminement', 'prixSurplus'));
+    contenu.push(corps("La marge unitaire consommateur est la clé de lecture économique de l'opération : elle correspond au prix réseau évité, diminué du prix de vente ACC et des coûts de réseau et taxes qui restent dus. C'est l'espace, souvent étroit, dans lequel producteur et consommateurs doivent tous deux trouver leur compte."));
+
+    contenu.push(titre3('3.3 Charges et hypothèses économiques'));
+    contenu.push(table(['Paramètre', 'Valeur', 'Unité', 'Statut'], [
+      lp('Frais de PMO / gestion', nf(p.fraisPMO), '€/an', 'Hypothèse'),
+      lp('Composante de gestion majorée', nf(p.compGestion), '€/an/participant', 'Hypothèse à vérifier'),
+      lp('Exploitation et maintenance', nf(p.maintenance), '€/an', 'Hypothèse'),
+      lp('Charges annuelles totales', nf(D.chargesAn), '€/an', 'Calculé'),
+      lp('Hausse du prix réseau', nf(p.inflationReseau * 100, 1), '%/an', 'Hypothèse'),
+      lp('Indexation du prix ACC', nf(p.indexACC * 100, 1), '%/an', 'Hypothèse — PMO'),
+      lp('Dégradation des panneaux', nf(p.degradation * 100, 2), '%/an', 'Hypothèse'),
+      lp("Durée d'analyse", nf(p.duree), 'ans', 'Hypothèse'),
+      lp("Taux d'actualisation", nf(p.tauxActualisation * 100, 1), '%', 'Hypothèse')
+    ], [3800, 1900, 1860, 1800]));
+    contenu.push(...fiches('fraisPMO', 'compGestion', 'maintenance', 'inflationReseau',
+                           'indexACC', 'degradation', 'duree', 'tauxActualisation'));
+
+    contenu.push(new Paragraph({
+      children: [TXT('Statut des valeurs. ', { bold: true, color: ENCRE }),
+        TXT("Seuls le prix réseau et le productible sont des données sourcées. Toutes les autres valeurs sont des hypothèses de travail, à confirmer auprès du gestionnaire de réseau, des fournisseurs et des textes en vigueur avant toute décision d'investissement.")],
+      alignment: AlignmentType.JUSTIFIED, spacing: { before: 80, after: 120 },
+      shading: { type: ShadingType.CLEAR, fill: 'FFF8E1' },
+      border: { top: bordEncre, bottom: bordEncre, left: bordEncre, right: bordEncre }
+    }));
+
+    /* ── 4. Collectif ───────────────────────────────────────────────── */
+    contenu.push(titre2('4. Composition du collectif'));
+    contenu.push(table(['Participant', 'Consommation', 'Clé statique', 'Simultanéité', "Capacité d'absorption"],
+      D.participants.map(x => ({ cells: [
+        cv(`${x.rang}. ${x.nom}`), cv(kwh(x.conso)), cv(pct(x.cle)), cv(pct(x.simul, 0)), cv(kwh(x.cap))
+      ]})).concat([{ fort: true, cells: [
+        cf('Total', { bold: true }), cv(kwh(D.totaux.conso)), cv(pct(D.totaux.cle)), cf('—'), cv(kwh(D.totaux.cap))
+      ]}]),
+      [2760, 1700, 1500, 1500, 1900]));
+    contenu.push(titre3('4.1 Ce que signifie chaque colonne'));
+    [["Ordre", " — le rang du participant dans la cascade d'affectation. Il ne compte qu'en mode « Ordre de priorité » : les premiers servis prennent tout ce qu'ils peuvent absorber avant de laisser la place aux suivants. C'est un choix de gouvernance, pas un paramètre technique."],
+     ['Consommation', " — la consommation électrique annuelle du participant, tous usages confondus, relevée sur sa facture. Chaque participant doit disposer d'un contrat de fourniture actif, chez le fournisseur de son choix."],
+     ['Clé statique', " — le coefficient de répartition fixe attribué au participant et transmis au gestionnaire de réseau par la PMO. La somme doit valoir 100 %. Au-delà, les clés sont normalisées ; en deçà, la production non affectée part en surplus. Cette colonne n'est utilisée qu'en mode « Clé statique »."],
+     ['Simultanéité', " — la part de la consommation annuelle qui a lieu pendant les heures de production. Un bâtiment tertiaire occupé en journée — mairie, école, commerce — se situe plutôt entre 60 et 75 % ; un logement occupé en soirée descend à 25-35 %. Seules des courbes de charge réelles permettent de trancher."],
+     ["Capacité d'absorption", " — consommation multipliée par simultanéité. C'est le plafond de ce que le participant peut recevoir sur l'année. Une clé généreuse attribuée à un participant peu simultané ne produit aucun bénéfice : l'énergie part en surplus."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+    contenu.push(corps("La simultanéité désigne la part de la consommation annuelle qui a lieu pendant les heures de production. Multipliée par la consommation, elle donne la capacité d'absorption : le plafond physique de ce qu'un participant peut recevoir sur l'année, quelle que soit la clé qui lui est attribuée. C'est la traduction annuelle de la règle de l'article D. 315-4, selon laquelle l'énergie affectée ne peut excéder la consommation mesurée. C'est aussi le paramètre le plus sensible de toute la simulation : sans courbes de charge réelles, il s'agit d'une estimation."));
+
+    /* ── 5. Résultats ───────────────────────────────────────────────── */
+    contenu.push(new Paragraph({ children: [new PageBreak()] }));
+    contenu.push(titre2('5. Résultats de la simulation'));
+    const ligRes = [
+      ['Production année 1', kwh(R.prodAn1)],
+      ["Capacité d'absorption du collectif", kwh(D.totaux.cap)],
+      ['Énergie partagée en ACC (an 1)', kwh(R.accAn1)],
+      ['Surplus collectif (an 1)', kwh(R.surplusAn1)],
+      ["Taux d'autoconsommation collective", pct(R.tauxACC), true],
+      ['Couverture des besoins du collectif', pct(R.couverture), true],
+      ['Recettes producteur (an 1)', eur(R.recettesAn1)],
+      ['Flux net producteur (an 1)', eur(R.netAn1)],
+      ['Valeur actuelle nette producteur', eur(R.van), true],
+      ['Taux de rendement interne', R.tri === null ? '—' : pct(R.tri * 100)],
+      ['Temps de retour brut', ans(R.retourBrut)],
+      ['Temps de retour actualisé', ans(R.retourAct)],
+      ['Économies consommateurs (an 1)', eur(R.gainConsoAn1), true],
+      ['Économies consommateurs cumulées', eur(R.gainConsoCumul)]
+    ].map(([lib, val, fort]) => ({ fort, cells: [cf(lib, { bold: !!fort }), cv(val)] }));
+    contenu.push(table(['Indicateur', 'Valeur'], ligRes, [6560, 2800]));
+    contenu.push(titre3('5.1 Comment lire chaque indicateur'));
+    [["Production année 1", " — puissance multipliée par productible. À comparer à la capacité d'absorption du collectif, juste en dessous : le rapport entre les deux dit immédiatement si l'installation est bien dimensionnée."],
+     ["Taux d'autoconsommation collective", " — part de la production effectivement partagée localement. Le complément part en surplus, valorisé à un tarif bien inférieur."],
+     ['Couverture des besoins', " — part de la consommation totale des participants couverte par l'ACC. À ne pas confondre avec le taux d'ACC : on peut avoir un taux élevé et une couverture faible si l'installation est petite devant les besoins."],
+     ['Valeur actuelle nette', " — la somme des flux futurs ramenés à leur valeur d'aujourd'hui, moins l'investissement net. Positive, le projet crée de la valeur par rapport à un placement au taux d'actualisation retenu ; négative, il en détruit."],
+     ['Taux de rendement interne', " — le taux d'actualisation qui annulerait la VAN. Il se compare au taux d'actualisation retenu : au-dessus, le projet est créateur de valeur. Il affiche « — » lorsque les flux ne remboursent jamais l'investissement."],
+     ['Temps de retour', " — l'année où la trésorerie cumulée franchit zéro, par interpolation linéaire, d'où la décimale. La version actualisée, plus sévère, tient compte du coût du temps."],
+     ['Économies consommateurs', " — le gain des participants sur leur facture. Si ce montant est négatif, le prix de vente ACC est trop élevé : les participants paieraient plus cher qu'au réseau et l'opération n'a pas de sens pour eux."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+
+    /* Graphiques */
+    const graphe = (b64, legende) => {
+      if (!b64) return [];
+      return [
+        new Paragraph({ spacing: { before: 120, after: 40 }, children: [
+          new ImageRun({ type: 'png', data: img64(b64), transformation: { width: 560, height: 218 } })
+        ]}),
+        new Paragraph({ spacing: { after: 160 }, children: [
+          new TextRun({ text: legende, font: POLICE, size: 16, italics: true, color: GRIS })
+        ]})
+      ];
+    };
+    contenu.push(...graphe(D.graphes.tresorerie, "Trésorerie cumulée du producteur (non actualisée et actualisée) et économies cumulées des consommateurs."));
+    contenu.push(...graphe(D.graphes.participants, "Consommation, capacité d'absorption et énergie effectivement affectée, par participant, la première année."));
+
+    /* ── 6. Bilan par participant ───────────────────────────────────── */
+    contenu.push(titre2('6. Bilan par participant (année 1)'));
+    contenu.push(table(['Participant', 'Conso.', 'Capacité', 'Énergie ACC', 'Part prod.', 'Couverture', 'Économie'],
+      D.bilan.map(x => ({ cells: [
+        cv(x.nom), cv(kwh(x.conso)), cv(kwh(x.cap)), cv(kwh(x.energie)),
+        cv(pct(x.part)), cv(pct(x.couverture)), cv(eur(x.gain))
+      ]})).concat([{ fort: true, cells: [
+        cf('Total', { bold: true }), cv(kwh(D.totaux.conso)), cv(kwh(D.totaux.cap)), cv(kwh(R.accAn1)),
+        cv(pct(R.tauxACC)), cv(pct(R.couverture)), cv(eur(R.gainConsoAn1))
+      ]}]),
+      [1960, 1250, 1250, 1350, 1180, 1250, 1120]));
+
+    /* ── 7. Comparaison des clés ────────────────────────────────────── */
+    contenu.push(new Paragraph({ children: [new PageBreak()] }));
+    contenu.push(titre2('7. Comparaison des clés de répartition'));
+    contenu.push(corps("Trois modes d'affectation sont comparés ci-dessous. Ils partagent exactement la même production : seule change la manière de l'attribuer, et donc la part qui finit en surplus."));
+    contenu.push(table(["Mode d'affectation", 'Énergie ACC', "Taux d'ACC", 'Surplus', 'Recettes prod.', 'Économies conso.', 'VAN prod.'],
+      D.modes.map(m => ({ fort: m.actif, cells: [
+        cf(m.nom + (m.actif ? ' (retenu)' : ''), { bold: m.actif }),
+        cv(kwh(m.energie)), cv(pct(m.taux)), cv(kwh(m.surplus)),
+        cv(eur(m.recettes)), cv(eur(m.gain)), cv(eur(m.van))
+      ]})),
+      [2200, 1300, 1050, 1250, 1300, 1300, 960]));
+    contenu.push(...graphe(D.graphes.modes, "Production partagée ou perdue en surplus, selon le mode d'affectation retenu (année 1)."));
+    contenu.push(puce([TXT('Clé statique', { bold: true }), TXT(" — des coefficients fixes, identiques à chaque pas de mesure. Simple et répandue, mais si un participant se voit affecter plus d'énergie qu'il ne peut absorber, le reliquat n'est pas réaffecté aux autres : il bascule en surplus collectif.")]));
+    contenu.push(puce([TXT('Clé au prorata des consommations', { bold: true }), TXT(" — fixe elle aussi, mais calculée au prorata des consommations annuelles. Elle épouse mieux le poids réel de chaque participant, sans s'adapter aux variations instantanées.")]));
+    contenu.push(puce([TXT('Ordre de priorité (maximisation)', { bold: true }), TXT(" — la production est affectée séquentiellement, chacun prenant ce qu'il peut absorber avant de laisser la place au suivant. C'est la logique de maximisation de l'autoconsommation introduite par le décret n° 2026-561 du 26 juin 2026, dont l'entrée en vigueur est prévue au 1er juillet 2027. Elle réduit le surplus, mais rend la répartition inégale : les derniers de la liste peuvent ne rien recevoir, ce qui pose une question d'équité relevant de la gouvernance de la PMO.")]));
+
+    /* ── 8. Cadre réglementaire ─────────────────────────────────────── */
+    contenu.push(titre2('8. Cadre réglementaire applicable'));
+    [['Périmètre', " — 2 km au maximum entre les participants les plus éloignés. Dérogations : 10 km en communes rurales ou périurbaines, 20 km en communes rurales, 20 km si un participant est un service d'incendie et de secours, ou le territoire d'un EPCI à fiscalité propre."],
+     ['Puissance', " — inférieure à 5 MW pour une opération étendue, jusqu'à 10 MW pour certaines opérations à l'échelle d'un EPCI."],
+     ['Répartition', " — décret n° 2026-561 du 26 juin 2026, rectifié le 5 juillet 2026 : affectation prioritaire aux consommateurs dans la limite de leur consommation mesurée, encadrement du calendrier de transmission des coefficients. Application échelonnée entre le 1er juillet 2026 et le 1er juillet 2027."],
+     ["Accise sur l'électricité", " — tarif particulier de 0 €/MWh depuis le 1er mars 2025 pour les kWh affectés, pour une installation de moins de 1 MWc (articles L. 312-87 et L. 312-79 du CIBS). C'est aujourd'hui le principal moteur économique du modèle."],
+     ['TURPE', " — systématiquement prélevé sur tout kWh soutiré, y compris affecté, même cédé gratuitement. Une grille spécifique existe sur option (article L. 315-3), réservée sous le TURPE 7 aux opérations dont tous les participants sont raccordés en aval du même poste HTA/BT. Une composante de gestion majorée s'applique à tous les participants."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+
+    /* ── 9. Détail année par année ──────────────────────────────────── */
+    contenu.push(new Paragraph({ children: [new PageBreak()] }));
+    contenu.push(titre2('9. Détail année par année'));
+    contenu.push(table(['Année', 'Production', 'Énergie ACC', 'Surplus', 'Recettes', 'Flux net', 'Trésorerie cumulée', 'Écon. conso.'],
+      D.annees.map(a => ({ cells: [
+        cv(a.t), cv(kwh(a.prod)), cv(kwh(a.acc)), cv(kwh(a.surplus)),
+        cv(eur(a.recettes)), cv(eur(a.net)), cv(eur(a.cumul)), cv(eur(a.gain))
+      ]})),
+      [780, 1330, 1330, 1180, 1130, 1130, 1600, 880]));
+
+    /* ── 10. Formules ───────────────────────────────────────────────── */
+    contenu.push(titre2('10. Formules employées'));
+    [ 'Production(t) = puissance × productible × (1 − dégradation)^(t−1)',
+      'Capacité(i) = consommation(i) × simultanéité(i)',
+      "Énergie ACC(i,t) = selon le mode d'affectation, plafonnée par Capacité(i)",
+      'Surplus(t) = Production(t) − Σ Énergie ACC(i,t)',
+      'Recettes(t) = Σ Énergie ACC × Prix ACC(t) + Surplus × prix surplus',
+      'Charges(t) = maintenance + frais PMO + composante gestion × (participants + 1)',
+      'Économie conso(i,t) = Énergie ACC(i,t) × [ Prix réseau(t) − Prix ACC(t) − acheminement ]',
+      "VAN = −Investissement net + Σ Flux net(t) / (1 + taux d'actualisation)^t",
+      'TRI = taux annulant la VAN, résolu par bissection'
+    ].forEach(f => contenu.push(formule(f)));
+
+    /* ── 11. Limites ────────────────────────────────────────────────── */
+    contenu.push(titre2('11. Limites du modèle'));
+    [["Raisonnement en énergie annuelle", ", non au pas de 15 minutes : la simultanéité remplace une simulation sur courbes de charge réelles. Suffisant pour une pré-étude et pour comparer des modes d'affectation, insuffisant pour engager un investissement."],
+     ['Un prix réseau unique', " pour tous les participants, alors que les tarifs varient et se déclinent le plus souvent sur quatre plages temporelles pour les non-résidentiels."],
+     ["Le TURPE spécifique optionnel n'est pas modélisé", ", ni la « part fixe » de production non affectée introduite par le décret de 2026, supposée nulle."],
+     ['Aucune fiscalité', " sur les recettes du producteur, ni IFER, ni taxe foncière, ni imposition des bénéfices. Aucun financement : l'investissement est supposé payé comptant en année 0."],
+     ['Le collectif est supposé stable sur toute la durée.', " Un participant qui déménage ou se retire oblige à revoir la clé — un risque propre à l'ACC."],
+     ["Les écarts affichés entre modes d'affectation constituent une borne haute", " du gain réellement atteignable, une clé dynamique ne pouvant anticiper parfaitement les consommations."]
+    ].forEach(([g, t]) => contenu.push(puce([TXT(g, { bold: true }), TXT(t)])));
+
+    /* ── 12. Suites ─────────────────────────────────────────────────── */
+    contenu.push(titre2('12. Suites à donner'));
+    ["Confirmer l'éligibilité du périmètre et la puissance cumulée auprès du gestionnaire de réseau.",
+     "Remplacer les coefficients de simultanéité par des courbes de charge réelles, seul moyen de fiabiliser le résultat.",
+     "Vérifier le tarif d'acheminement applicable, la valorisation du surplus et l'éligibilité au TURPE spécifique.",
+     "Arbitrer le prix de vente ACC et le mode d'affectation en instance de PMO : ce sont des décisions de gouvernance, que le calcul éclaire sans les trancher.",
+     "Vérifier la compatibilité des aides envisagées avec le régime de valorisation du surplus retenu."
+    ].forEach(t => contenu.push(puce(t)));
+
+    /* ── 13. Refaire la simulation ──────────────────────────────────── */
+    contenu.push(titre2('13. Refaire ou ajuster cette simulation'));
+    contenu.push(corps("Ce rapport est produit par le simulateur d'autoconsommation collective de Soleil Beaujolais, un fichier HTML autonome qui s'ouvre dans n'importe quel navigateur. La marche à suivre pour produire une nouvelle version :"));
+    ["Vérifier d'abord l'éligibilité — périmètre géographique et puissance cumulée. Un projet hors périmètre n'a pas d'économie à simuler.",
+     "Renseigner les participants avec leur consommation réelle et une estimation honnête de leur simultanéité, puis comparer le total des capacités d'absorption à la production : c'est le premier test de cohérence du projet.",
+     "Ajuster la production et l'investissement d'après le devis, sans oublier les frais spécifiques à l'ACC — étude de faisabilité, montage juridique, convention de raccordement — qui pèsent proportionnellement plus lourd sur les petites opérations.",
+     "Caler les prix : le prix réseau vient des factures, le prix de vente ACC est la variable de décision de la PMO. Le faire varier et observer les deux colonnes, producteur et consommateurs, jusqu'à trouver un point acceptable pour les deux.",
+     "Comparer les trois modes d'affectation pour mesurer ce que coûte une clé mal ajustée.",
+     "Tester la robustesse : mettre la subvention à zéro, la hausse du prix réseau à 0 %, la simultanéité dix points plus bas. Si le projet résiste, il est solide."
+    ].forEach((t, i) => contenu.push(puce([TXT(`${i + 1}. `, { bold: true }), TXT(t)])));
+    contenu.push(corps([
+      TXT('Manuel complet. ', { bold: true }),
+      TXT("Chaque paramètre dispose dans le simulateur d'un lien d'aide qui ouvre le manuel d'utilisation à la fiche correspondante. Les explications reprises dans ce rapport en sont extraites : les deux documents disent la même chose.")
+    ]));
+
+    /* ── Document ───────────────────────────────────────────────────── */
+    const doc = new Document({
+      creator: 'Soleil Beaujolais',
+      title: 'Rapport de simulation — Autoconsommation collective',
+      description: "Rapport produit par le simulateur d'autoconsommation collective de Soleil Beaujolais",
+      styles: { default: { document: { run: { font: POLICE, size: 20 } } } },
+      sections: [{
+        properties: { page: { margin: { top: 800, right: 740, bottom: 740, left: 740 } } },
+        footers: { default: new Footer({ children: [
+          new Paragraph({ alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 6, color: ENCRE, space: 6 } }, children: [
+            new TextRun({ text: 'Soleil Beaujolais — Énergie citoyenne en Beaujolais · soleilbeaujolais.fr', font: POLICE, size: 16, color: GRIS })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [
+            new TextRun({ text: "Document d'estimation à caractère indicatif : il ne constitue ni un conseil financier, ni un conseil juridique, ni une garantie de résultat.", font: POLICE, size: 15, color: GRIS, italics: true })
+          ]})
+        ]})},
+        children: contenu
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const nom = 'Rapport_ACC_' + new Date().toISOString().slice(0, 10) + '.docx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nom; document.body.appendChild(a); a.click();
+    a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch(e){
+    alert("Le rapport Word n'a pas pu être produit : " + e.message
+        + "\n\nUne connexion est nécessaire au premier téléchargement."
+        + "\nÀ défaut, le bouton « Imprimer le rapport » fonctionne hors ligne.");
+    console.error(e);
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = libelle; }
+  }
 }
 
 /* ── Recalcul automatique + lancement initial ───────────────────── */
